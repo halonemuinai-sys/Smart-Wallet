@@ -138,6 +138,14 @@
         btn.title = isBalanceHidden ? "Tampilkan Saldo" : "Sembunyikan Saldo";
     }
 
+    function cleanNumber(val) {
+        if (!val) return 0;
+        if (typeof val === 'number') return val;
+        // Hapus titik pemisah ribuan dan ganti koma desimal jadi titik jika ada
+        let clean = val.toString().replace(/\./g, "").replace(/,/g, ".");
+        return parseFloat(clean) || 0;
+    }
+
     function formatCurrencyInput(input) {
         // Hilangkan semua karakter kecuali angka
         let value = input.value.replace(/\D/g, "");
