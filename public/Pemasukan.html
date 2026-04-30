@@ -8,59 +8,59 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- FORM CARD -->
         <div class="lg:col-span-1">
-            <div class="relative bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-lg shadow-emerald-200/50 p-6 text-white overflow-hidden">
-                <!-- Decorative Elements -->
-                <div class="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full blur-2xl"></div>
-                <div class="absolute -left-4 -bottom-4 w-20 h-20 bg-white/5 rounded-full blur-xl"></div>
-                
-                <div class="relative z-10">
-                    <div class="flex items-center gap-3 mb-5">
-                        <div class="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                        </div>
-                        <h3 class="text-lg font-bold tracking-tight">Catat Pemasukan</h3>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                     </div>
-                    <form onsubmit="submitTransaction(event, 'income')" class="space-y-4">
-                        <div>
-                            <label for="inc-amount" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Nominal</label>
-                            <input type="text" id="inc-amount" title="Nominal Pemasukan" placeholder="0" required oninput="formatCurrencyInput(this)" class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white placeholder-white/40 focus:ring-2 focus:ring-white/40 outline-none transition-all">
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label for="inc-category" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Kategori</label>
-                                <div class="relative group">
-                                    <select id="inc-category" title="Kategori Pemasukan" class="w-full rounded-xl bg-white/10 backdrop-blur-md border border-white/20 p-3 pr-10 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all appearance-none cursor-pointer hover:bg-white/20"></select>
-                                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-white/60 group-hover:text-white transition-colors">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <label for="inc-bank" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Akun Tujuan</label>
-                                <div class="relative group">
-                                    <select id="inc-bank" title="Akun Bank Pemasukan" class="w-full rounded-xl bg-white/10 backdrop-blur-md border border-white/20 p-3 pr-10 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all appearance-none cursor-pointer hover:bg-white/20"></select>
-                                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-white/60 group-hover:text-white transition-colors">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label for="inc-date" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Tanggal</label>
-                                <input type="date" id="inc-date" title="Tanggal Pemasukan" required class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all">
-                            </div>
-                            <div>
-                                <label for="inc-desc" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Keterangan</label>
-                                <input type="text" id="inc-desc" title="Keterangan Pemasukan" placeholder="Opsional..." class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white placeholder-white/40 focus:ring-2 focus:ring-white/40 outline-none transition-all">
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl text-emerald-700 font-bold transition-all bg-white hover:bg-emerald-50 shadow-lg shadow-black/10 mt-1 text-sm uppercase tracking-wider active:scale-[0.98]">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                            Simpan Pemasukan
-                        </button>
-                    </form>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 tracking-tight">Catat Pemasukan</h3>
+                        <p class="text-xs text-slate-500 font-medium">Tambah data pemasukan baru</p>
+                    </div>
                 </div>
+                
+                <form onsubmit="submitTransaction(event, 'income')" class="space-y-4 flex-1 flex flex-col">
+                    <div>
+                        <label for="inc-amount" class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Nominal</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
+                            <input type="text" id="inc-amount" title="Nominal Pemasukan" placeholder="0" required oninput="formatCurrencyInput(this)" class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 pl-10 text-sm text-slate-900 font-bold focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="inc-category" class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Kategori</label>
+                            <div class="relative group">
+                                <select id="inc-category" title="Kategori Pemasukan" class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 pr-10 text-sm text-slate-900 font-medium focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"></select>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="inc-bank" class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Akun Tujuan</label>
+                            <div class="relative group">
+                                <select id="inc-bank" title="Akun Bank Pemasukan" class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 pr-10 text-sm text-slate-900 font-medium focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"></select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="inc-date" class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Tanggal</label>
+                            <input type="date" id="inc-date" title="Tanggal Pemasukan" required class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm text-slate-900 font-medium focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label for="inc-desc" class="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">Keterangan</label>
+                            <input type="text" id="inc-desc" title="Keterangan Pemasukan" placeholder="Opsional..." class="w-full rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm text-slate-900 font-medium focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-auto pt-4">
+                        <button type="submit" class="w-full py-3.5 px-4 rounded-xl text-white font-bold transition-all bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 text-sm flex items-center justify-center gap-2 active:scale-[0.98]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                            SIMPAN PEMASUKAN
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 

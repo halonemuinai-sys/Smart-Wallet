@@ -130,6 +130,9 @@ app.post('/api/:functionName', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Expires', '-1');
+    res.set('Pragma', 'no-cache');
     res.send(renderHtml('index'));
 });
 
