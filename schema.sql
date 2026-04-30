@@ -99,3 +99,8 @@ CREATE TABLE budget (
     amount DECIMAL(15, 2),
     period VARCHAR(20)
 );
+
+CREATE TABLE users (
+    username VARCHAR(50) PRIMARY KEY,
+    pin VARCHAR(20) NOT NULL
+);

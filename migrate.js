@@ -65,6 +65,13 @@ async function runMigration(data) {
       [b.id, b.category_id || b.category, b.amount, b.period || 'monthly']);
     }
 
+    // Users
+    console.log('Sync Users...');
+    for (const u of data.users || []) {
+      await query('INSERT INTO users (username, pin) VALUES ($1, $2) ON CONFLICT (username) DO UPDATE SET pin = EXCLUDED.pin',
+      [u.username || u.Username, u.pin || u.PIN || u.Pin]);
+    }
+
     console.log('--- Sinkronisasi Total Berhasil! ---');
     return { success: true };
 

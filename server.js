@@ -72,8 +72,10 @@ app.post('/api/:functionName', async (req, res) => {
 
         if (functionName === 'verifyLogin') {
             const [username, pin] = args;
-            if (username === 'admin' && pin === '123456') {
-                return res.json({ status: 'success', username: 'admin' });
+            const resUser = await pool.query('SELECT * FROM users WHERE username = $1 AND pin = $2', [username, pin.toString()]);
+            
+            if (resUser.rows.length > 0) {
+                return res.json({ status: 'success', username: resUser.rows[0].username });
             }
             return res.json({ status: 'error', message: 'Username atau PIN salah' });
         }
