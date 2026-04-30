@@ -43,6 +43,9 @@ async function saveBudgetLocal() {
 }
 
 function renderBudget() {
+    if (!Array.isArray(budgets)) budgets = [];
+    if (!Array.isArray(transactions)) transactions = [];
+    if (!Array.isArray(categoryList)) categoryList = [];
     // 1. Populate category dropdown in budget form
     const catSelect = document.getElementById('budget-category');
     if (catSelect && CATS_EXPENSE) {
@@ -225,6 +228,8 @@ function deleteBudget(id) {
 }
 
 function renderBudgetDashboard() {
+    if (!Array.isArray(budgets)) budgets = [];
+    if (!Array.isArray(categoryList)) categoryList = [];
     const dashBudgetEl = document.getElementById('dash-budget-breakdown');
     if (!dashBudgetEl) return;
     

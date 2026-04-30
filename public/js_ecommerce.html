@@ -250,6 +250,12 @@ function _getPlatStyle(name) {
 }
 
 function renderEcommerce() {
+    if (!Array.isArray(ecommerceLogs)) ecommerceLogs = [];
+    if (!Array.isArray(ecomPlatforms)) ecomPlatforms = [];
+    if (!Array.isArray(banks)) banks = [];
+    if (!Array.isArray(ecommerceLogs)) ecommerceLogs = [];
+    if (!Array.isArray(ecomPlatforms)) ecomPlatforms = [];
+    if (!Array.isArray(banks)) banks = [];
     // Populate platform dropdown
     const platEl = document.getElementById('ecom-platform');
     if (platEl) {

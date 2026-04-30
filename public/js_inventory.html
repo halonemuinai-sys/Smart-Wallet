@@ -178,6 +178,7 @@ function _calcDepreciation(item) {
 // --- RENDER INVENTORY ---
 function renderInventory() {
     if (!Array.isArray(inventoryItems)) inventoryItems = [];
+    if (!Array.isArray(inventoryItems)) inventoryItems = [];
     
     const searchVal = (document.getElementById('inv-search')?.value || '').toLowerCase();
     const filterCond = document.getElementById('inv-filter-condition')?.value || 'all';
