@@ -2003,6 +2003,7 @@
         document.querySelector('aside').classList.add('md:flex');
 
         renderSidebar();
+        showSyncing(true);
 
         // Try batch loading (single call, much faster)
         if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -2036,6 +2037,7 @@
                     if (typeof renderBudget === 'function') renderBudget();
                     if (typeof loadSubscriptions === 'function') await loadSubscriptions();
                     if (typeof renderSubscriptions === 'function') renderSubscriptions();
+                    showSyncing(false);
                     console.log('[Batch] All data loaded in single call (' + (Date.now() - (batchData._ts || 0)) + 'ms cache age)');
                     return;
                 }
