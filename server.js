@@ -106,7 +106,8 @@ app.post('/api/:functionName', async (req, res) => {
         res.json(await safeQuery(table));
 
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error(err);
+        res.status(500).json({ status: 'error', message: err.message });
     }
 });
 
