@@ -190,11 +190,26 @@
                 ${options.map(opt => {
                     const label = typeof opt === 'object' ? opt.name : opt;
                     const val = typeof opt === 'object' ? opt.id : opt;
+                    const isMain = typeof opt === 'object' && opt.isMain;
+                    const isSub = typeof opt === 'object' && opt.isSub;
                     const emoji = getEmoji(label);
-                    return `<div class="custom-select-option" data-value="${val}">
-                        <span class="text-lg">${emoji}</span>
-                        <span>${label}</span>
-                    </div>`;
+                    
+                    if (isMain) {
+                        return `<div class="custom-select-option main-category bg-slate-50 border-b border-slate-100 hover:bg-slate-100" data-value="${val}">
+                            <span class="text-lg">${emoji}</span>
+                            <span class="font-black text-slate-800 text-[11px] tracking-widest uppercase">${label}</span>
+                        </div>`;
+                    } else if (isSub) {
+                        return `<div class="custom-select-option sub-category ml-6 border-l-2 border-indigo-100 pl-4 py-2" data-value="${val}">
+                            <span class="text-indigo-300 text-sm font-bold">↳</span>
+                            <span class="text-slate-600 font-medium">${label}</span>
+                        </div>`;
+                    } else {
+                        return `<div class="custom-select-option" data-value="${val}">
+                            <span class="text-lg">${emoji}</span>
+                            <span class="font-medium text-slate-700">${label}</span>
+                        </div>`;
+                    }
                 }).join('')}
             </div>
         `;
@@ -218,11 +233,23 @@
         container.querySelectorAll('.custom-select-option').forEach(opt => {
             opt.onclick = () => {
                 const val = opt.getAttribute('data-value');
-                const label = opt.querySelector('span:last-child').innerText;
-                const emoji = opt.querySelector('span:first-child').innerText;
+                let displayHtml = '';
+                
+                if (opt.classList.contains('sub-category')) {
+                    const label = opt.querySelector('span:last-child').innerText;
+                    displayHtml = `<span class="mr-1">↳</span> ${label}`;
+                } else if (opt.classList.contains('main-category')) {
+                    const emoji = opt.querySelector('span:first-child').innerText;
+                    const label = opt.querySelector('span:last-child').innerText;
+                    displayHtml = `<span class="mr-2">${emoji}</span> <strong>${label}</strong>`;
+                } else {
+                    const emoji = opt.querySelector('span:first-child').innerText;
+                    const label = opt.querySelector('span:last-child').innerText;
+                    displayHtml = `<span class="mr-2">${emoji}</span> ${label}`;
+                }
                 
                 selectEl.value = val;
-                selectedText.innerHTML = `<span class="mr-2">${emoji}</span> ${label}`;
+                selectedText.innerHTML = displayHtml;
                 optionsList.classList.remove('active');
                 
                 // Trigger change event for filtering
@@ -236,8 +263,30 @@
 
     // Fungsi untuk memperbarui semua dropdown kategori
     function renderCategoriesDropdowns() {
-        initPremiumDropdown('inc-category', CATS_INCOME, 'Pilih Kategori Pemasukan');
-        initPremiumDropdown('exp-category', CATS_EXPENSE, 'Pilih Kategori Pengeluaran');
+        // Build Hierarchical Arrays
+        const buildHierarchy = (type) => {
+            const parents = categoryList.filter(c => c.type === type && (!c.parent_id || c.parent_id === ''));
+            let options = [];
+            parents.forEach(p => {
+                const children = categoryList.filter(c => c.parent_id === p.id);
+                if (children.length > 0) {
+                    // Parent Item (Bisa dipilih juga)
+                    options.push({ id: p.name, name: p.name, isMain: true });
+                    // Children Items
+                    children.forEach(ch => {
+                        options.push({ id: p.name + ' - ' + ch.name, name: ch.name, isSub: true });
+                    });
+                } else {
+                    // Item tunggal
+                    options.push({ id: p.name, name: p.name });
+                }
+            });
+            if (options.length === 0) options.push({ id: 'Lainnya', name: 'Lainnya' });
+            return options;
+        };
+
+        initPremiumDropdown('inc-category', buildHierarchy('income'), 'Pilih Kategori Pemasukan');
+        initPremiumDropdown('exp-category', buildHierarchy('expense'), 'Pilih Kategori Pengeluaran');
         
         // Akun Bank juga bisa dibuat premium
         if (banks && banks.length > 0) {
