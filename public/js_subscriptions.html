@@ -38,6 +38,8 @@ async function saveSubscriptionsLocal() {
 }
 
 function renderSubscriptions(filter = 'all') {
+    if (!Array.isArray(subscriptions)) subscriptions = [];
+    if (!Array.isArray(banks)) banks = [];
     const listEl = document.getElementById('list-subscriptions');
     if (!listEl) return;
 
@@ -251,6 +253,7 @@ function recordSubscriptionPayment(id) {
 }
 
 function renderSubscriptionDashboard() {
+    if (!Array.isArray(subscriptions)) subscriptions = [];
     const dashEl = document.getElementById('dash-subscription-widget');
     if (!dashEl) return;
 
