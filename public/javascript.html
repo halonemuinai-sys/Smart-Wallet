@@ -149,10 +149,103 @@
         }
     }
 
-    function cleanNumber(str) {
-        if (!str) return 0;
-        // Hilangkan semua titik agar menjadi angka murni
-        return Number(str.replace(/\./g, ""));
+    // --- PREMIUM DROPDOWN ENGINE ---
+    function initPremiumDropdown(selectId, options, placeholder = 'Pilih...') {
+        const selectEl = document.getElementById(selectId);
+        if (!selectEl) return;
+
+        // Sembunyikan select asli tapi tetap gunakan untuk menyimpan nilai (agar form tidak rusak)
+        selectEl.classList.add('hidden');
+        
+        // Cek apakah container sudah ada, jika belum buat
+        let container = selectEl.parentElement.querySelector('.custom-select-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'custom-select-container';
+            selectEl.parentElement.appendChild(container);
+        }
+
+        // Mapping Emojis (Optional but makes it premium)
+        const emojiMap = {
+            'Gaji': '💰', 'Bonus': '✨', 'Investasi': '📈', 'Makan': '🍔', 'Transport': '🚗', 
+            'Belanja': '🛍️', 'Kesehatan': '💊', 'Hiburan': '🎮', 'Listrik': '⚡', 'Pendidikan': '📚',
+            'MRT': '🚇', 'Transportation': '🚌', 'Parkir': '🅿️', 'Air': '🚰', 'Internet': '🌐',
+            'Pulsa': '📱', 'Streaming': '📺', 'Makan & Minum': '🍜', 'Jajan': '☕'
+        };
+
+        const getEmoji = (name) => {
+            for (let key in emojiMap) { if (name.includes(key)) return emojiMap[key]; }
+            return '📁';
+        };
+
+        const triggerHtml = `
+            <div class="custom-select-trigger w-full rounded-xl bg-white/10 backdrop-blur-md border border-white/20 p-3 text-base sm:text-sm text-white hover:bg-white/20 transition-all">
+                <span class="selected-text truncate">${placeholder}</span>
+                <svg class="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+        `;
+
+        const optionsHtml = `
+            <div class="custom-select-options custom-scrollbar">
+                ${options.map(opt => {
+                    const label = typeof opt === 'object' ? opt.name : opt;
+                    const val = typeof opt === 'object' ? opt.id : opt;
+                    const emoji = getEmoji(label);
+                    return `<div class="custom-select-option" data-value="${val}">
+                        <span class="text-lg">${emoji}</span>
+                        <span>${label}</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        `;
+
+        container.innerHTML = triggerHtml + optionsHtml;
+
+        const trigger = container.querySelector('.custom-select-trigger');
+        const optionsList = container.querySelector('.custom-select-options');
+        const selectedText = container.querySelector('.selected-text');
+
+        // Toggle Open
+        trigger.onclick = (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.custom-select-options').forEach(el => {
+                if (el !== optionsList) el.classList.remove('active');
+            });
+            optionsList.classList.toggle('active');
+        };
+
+        // Select Option
+        container.querySelectorAll('.custom-select-option').forEach(opt => {
+            opt.onclick = () => {
+                const val = opt.getAttribute('data-value');
+                const label = opt.querySelector('span:last-child').innerText;
+                const emoji = opt.querySelector('span:first-child').innerText;
+                
+                selectEl.value = val;
+                selectedText.innerHTML = `<span class="mr-2">${emoji}</span> ${label}`;
+                optionsList.classList.remove('active');
+                
+                // Trigger change event for filtering
+                selectEl.dispatchEvent(new Event('change'));
+            };
+        });
+
+        // Close on click outside
+        document.addEventListener('click', () => optionsList.classList.remove('active'));
+    }
+
+    // Fungsi untuk memperbarui semua dropdown kategori
+    function renderCategoriesDropdowns() {
+        initPremiumDropdown('inc-category', CATS_INCOME, 'Pilih Kategori Pemasukan');
+        initPremiumDropdown('exp-category', CATS_EXPENSE, 'Pilih Kategori Pengeluaran');
+        
+        // Akun Bank juga bisa dibuat premium
+        if (banks && banks.length > 0) {
+            const bankOpts = banks.map(b => ({ id: b.id, name: b.name }));
+            initPremiumDropdown('inc-bank', bankOpts, 'Pilih Akun Tujuan');
+            initPremiumDropdown('exp-bank', bankOpts, 'Pilih Akun Pembayar');
+            initPremiumDropdown('quick-exp-bank', bankOpts, 'Pilih Akun Pembayar');
+        }
     }
 
     function showSyncing(isSync) {
@@ -2037,6 +2130,7 @@
                     if (typeof renderInventory === 'function') renderInventory();
                     if (typeof loadBudget === 'function') await loadBudget();
                     if (typeof renderBudget === 'function') renderBudget();
+                    if (typeof renderCategoriesDropdowns === 'function') renderCategoriesDropdowns();
                     if (typeof loadSubscriptions === 'function') await loadSubscriptions();
                     if (typeof renderSubscriptions === 'function') renderSubscriptions();
                     showSyncing(false);
@@ -2058,6 +2152,7 @@
         if (typeof loadInventory === 'function') await loadInventory();
         if (typeof loadBudget === 'function') await loadBudget();
         if (typeof renderBudget === 'function') renderBudget();
+        if (typeof renderCategoriesDropdowns === 'function') renderCategoriesDropdowns();
         if (typeof loadSubscriptions === 'function') await loadSubscriptions();
         if (typeof renderSubscriptions === 'function') renderSubscriptions();
     }
