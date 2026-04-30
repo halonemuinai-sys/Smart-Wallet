@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS fixed_costs;
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS banks;
 DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
 
 CREATE TABLE categories (
     id VARCHAR(100) PRIMARY KEY,
@@ -20,27 +21,30 @@ CREATE TABLE categories (
 CREATE TABLE banks (
     id VARCHAR(100) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
+    account_number VARCHAR(50),
     account_type VARCHAR(50),
-    account_no VARCHAR(50),
     initial_balance DECIMAL(15, 2) DEFAULT 0
 );
 
 CREATE TABLE transactions (
     id VARCHAR(100) PRIMARY KEY,
-    bank_id VARCHAR(100) REFERENCES banks(id),
-    category_name VARCHAR(100),
+    date VARCHAR(50) NOT NULL,
     type VARCHAR(20),
+    category VARCHAR(100),
     amount DECIMAL(15, 2) NOT NULL,
-    discount DECIMAL(15, 2) DEFAULT 0,
-    date DATE NOT NULL,
-    description TEXT
+    description TEXT,
+    bank VARCHAR(100),
+    discount DECIMAL(15, 2) DEFAULT 0
 );
 
 CREATE TABLE fixed_costs (
     id VARCHAR(100) PRIMARY KEY,
     name VARCHAR(100),
     amount DECIMAL(15, 2),
-    category_id VARCHAR(100)
+    due_date VARCHAR(50),
+    category VARCHAR(100),
+    bank_id VARCHAR(100),
+    is_paid BOOLEAN DEFAULT false
 );
 
 CREATE TABLE subscriptions (
@@ -48,20 +52,28 @@ CREATE TABLE subscriptions (
     name VARCHAR(100),
     amount DECIMAL(15, 2),
     billing_cycle VARCHAR(20),
-    next_billing DATE,
+    due_date VARCHAR(50),
     category VARCHAR(100),
-    bank_id VARCHAR(100) REFERENCES banks(id)
+    bank_id VARCHAR(100),
+    status VARCHAR(20),
+    email VARCHAR(100)
+);
+
+CREATE TABLE budget (
+    id VARCHAR(100) PRIMARY KEY,
+    category VARCHAR(100),
+    "limit" DECIMAL(15, 2)
 );
 
 CREATE TABLE deposits (
     id VARCHAR(100) PRIMARY KEY,
     name VARCHAR(100),
-    bank_id VARCHAR(100) REFERENCES banks(id),
+    bank_id VARCHAR(100),
     amount DECIMAL(15, 2),
     rate DECIMAL(5, 2),
     tenor INTEGER,
-    start_date DATE,
-    maturity_date DATE,
+    start_date VARCHAR(50),
+    maturity_date VARCHAR(50),
     status VARCHAR(20)
 );
 
@@ -74,12 +86,14 @@ CREATE TABLE cryptos (
 
 CREATE TABLE ecommerce (
     id VARCHAR(100) PRIMARY KEY,
-    date DATE,
+    date VARCHAR(50),
     platform VARCHAR(50),
     item_name VARCHAR(255),
     category VARCHAR(100),
     amount DECIMAL(15, 2),
-    bank_id VARCHAR(100) REFERENCES banks(id)
+    bank_id VARCHAR(100),
+    tenor INTEGER,
+    txn_id VARCHAR(100)
 );
 
 CREATE TABLE inventory (
@@ -87,20 +101,17 @@ CREATE TABLE inventory (
     item_name VARCHAR(255),
     category VARCHAR(100),
     purchase_price DECIMAL(15, 2),
-    purchase_date DATE,
-    lifespan_months INTEGER,
+    current_value DECIMAL(15, 2),
     condition VARCHAR(50),
-    source VARCHAR(100)
-);
-
-CREATE TABLE budget (
-    id VARCHAR(100) PRIMARY KEY,
-    category_id VARCHAR(100),
-    amount DECIMAL(15, 2),
-    period VARCHAR(20)
+    purchase_date VARCHAR(50),
+    qty INTEGER,
+    status VARCHAR(50),
+    ecom_id VARCHAR(100)
 );
 
 CREATE TABLE users (
+    id VARCHAR(100),
     username VARCHAR(50) PRIMARY KEY,
-    pin VARCHAR(20) NOT NULL
+    pin VARCHAR(20) NOT NULL,
+    role VARCHAR(20)
 );
