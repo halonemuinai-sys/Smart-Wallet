@@ -503,6 +503,11 @@
     }
 
     function renderData() {
+        // Pengaman Global
+        if (!Array.isArray(transactions)) transactions = [];
+        if (!Array.isArray(banks)) banks = [];
+        if (!Array.isArray(categoryList)) categoryList = [];
+
         let dashInc = 0, dashExp = 0, totalDiscount = 0;
         const listInc = [], listExp = [], listRecent = [];
 
