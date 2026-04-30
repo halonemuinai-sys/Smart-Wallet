@@ -64,6 +64,7 @@ app.post('/api/:functionName', async (req, res) => {
             return res.json(result);
         }
 
+        // 4. SYNC FROM GAS
         if (functionName === 'syncFromGAS') {
             const [gasUrl] = args;
             console.log("Memulai Sinkronisasi dari:", gasUrl);
@@ -79,6 +80,47 @@ app.post('/api/:functionName', async (req, res) => {
             throw new Error(jsonData.message || 'Gagal sinkronisasi dari GAS');
         }
 
+        // 5. USER MANAGEMENT
+        if (functionName === 'getUsers') {
+            const users = await pool.query('SELECT username, role FROM users'); // Jangan kirim PIN
+            return res.json({ status: 'success', data: users.rows });
+        }
+
+        if (functionName === 'saveUser') {
+            const { username, oldPin, newPin, role } = args[0];
+            
+            // Cek apakah user eksis
+            const existing = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+            
+            if (existing.rows.length > 0) {
+                // Update User: Wajib mencocokkan PIN lama kecuali yang login adalah admin yang mengedit orang lain.
+                // Untuk simplifikasi, kita update jika oldPin cocok, atau admin bypass (implementasi sederhana).
+                const user = existing.rows[0];
+                if (oldPin !== user.pin && oldPin !== 'admin_bypass') {
+                    throw new Error("PIN Lama salah!");
+                }
+                const finalPin = newPin ? newPin.toString() : user.pin;
+                const finalRole = role || user.role || 'user';
+                await pool.query('UPDATE users SET pin = $1, role = $2 WHERE username = $3', [finalPin, finalRole, username]);
+            } else {
+                // Create New User
+                const finalPin = newPin ? newPin.toString() : '123456';
+                const finalRole = role || 'user';
+                await pool.query('INSERT INTO users (id, username, pin, role) VALUES ($1, $2, $3, $4)', [
+                    'usr_' + Date.now().toString(36), username, finalPin, finalRole
+                ]);
+            }
+            return res.json({ status: 'success', message: 'Profil berhasil disimpan!' });
+        }
+
+        if (functionName === 'deleteUser') {
+            const [targetUsername] = args;
+            if (targetUsername === 'admin') throw new Error("Admin tidak boleh dihapus!");
+            await pool.query('DELETE FROM users WHERE username = $1', [targetUsername]);
+            return res.json({ status: 'success', message: 'User berhasil dihapus!' });
+        }
+
+        // Default response agar tidak 404
         res.json({ status: 'success', data: [] });
 
     } catch (err) {

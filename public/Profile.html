@@ -1,0 +1,229 @@
+<!-- ========================================== -->
+<!-- PROFILE & USER MANAGEMENT MODULE -->
+<!-- ========================================== -->
+<div id="view-profile" class="view-module hidden animate-[fadeIn_0.5s_ease-out]">
+    
+    <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Pengaturan Profil</h2>
+            <p class="text-sm text-slate-500 mt-1">Ubah username, PIN, atau tambahkan pengguna baru.</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- SECTION 1: EDIT MY PROFILE -->
+        <div class="lg:col-span-1">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-indigo-200">
+                        <span id="profile-avatar-letter">U</span>
+                    </div>
+                    <div>
+                        <h3 id="profile-current-username" class="text-lg font-bold text-slate-800">User</h3>
+                        <p id="profile-current-role" class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full inline-block mt-1">Admin</p>
+                    </div>
+                </div>
+
+                <form onsubmit="submitMyProfile(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username Baru</label>
+                        <input type="text" id="profile-username" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-medium" placeholder="Kosongkan jika tidak diubah" disabled>
+                        <p class="text-[10px] text-slate-400 mt-1">Username saat ini tidak bisa diubah langsung, buat user baru lalu hapus yang lama jika perlu.</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">PIN Lama <span class="text-rose-500">*</span></label>
+                        <input type="password" id="profile-old-pin" class="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-bold tracking-widest text-center" placeholder="••••" maxlength="6" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">PIN Baru</label>
+                        <input type="password" id="profile-new-pin" class="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-bold tracking-widest text-center" placeholder="6 Digit Angka" maxlength="6">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:shadow-indigo-300 transition-all">
+                        Simpan Perubahan
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- SECTION 2: USER MANAGEMENT (ADMIN ONLY) -->
+        <div class="lg:col-span-2">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Daftar Pengguna</h3>
+                        <p class="text-xs text-slate-500 mt-1">Kelola akses orang lain ke aplikasi ini.</p>
+                    </div>
+                    <button onclick="openAddUserModal()" class="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 rounded-xl font-semibold text-sm transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Tambah User
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                            <tr>
+                                <th class="pb-3 font-semibold">User</th>
+                                <th class="pb-3 font-semibold text-center">Role</th>
+                                <th class="pb-3 font-semibold text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="list-users" class="divide-y divide-slate-50">
+                            <!-- JS akan mengisi ini -->
+                            <tr>
+                                <td colspan="3" class="py-6 text-center text-slate-400 text-xs">Memuat daftar pengguna...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let userList = [];
+
+    // Dipanggil oleh switchView
+    async function renderProfile() {
+        const currentUser = localStorage.getItem('keuangan_user') || 'User';
+        document.getElementById('profile-current-username').innerText = currentUser;
+        document.getElementById('profile-avatar-letter').innerText = currentUser.charAt(0).toUpperCase();
+        document.getElementById('profile-username').value = currentUser;
+
+        // Ambil daftar users dari server
+        await loadUsers();
+    }
+
+    async function loadUsers() {
+        try {
+            const res = await fetch('/api/getUsers', { method: 'POST' });
+            const json = await res.json();
+            if (json.status === 'success') {
+                userList = json.data;
+                const tbody = document.getElementById('list-users');
+                
+                if (userList.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="py-6 text-center text-slate-400 text-xs">Tidak ada data.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = userList.map(u => {
+                    const isAdmin = u.username === 'admin' || u.role === 'admin';
+                    const roleBadge = isAdmin 
+                        ? `<span class="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg text-[10px] font-bold">ADMIN</span>`
+                        : `<span class="bg-slate-50 text-slate-500 px-2 py-1 rounded-lg text-[10px] font-bold">USER</span>`;
+                    
+                    return `
+                        <tr class="hover:bg-slate-50 transition-colors group">
+                            <td class="py-3 font-bold text-slate-700">${u.username}</td>
+                            <td class="py-3 text-center">${roleBadge}</td>
+                            <td class="py-3 text-right">
+                                <button onclick="deleteUser('${u.username}')" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors ${u.username === 'admin' ? 'hidden' : ''}" title="Hapus User">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        } catch (e) {
+            console.error('Gagal load users:', e);
+        }
+    }
+
+    async function submitMyProfile(e) {
+        e.preventDefault();
+        const username = document.getElementById('profile-username').value;
+        const oldPin = document.getElementById('profile-old-pin').value;
+        const newPin = document.getElementById('profile-new-pin').value;
+
+        if (!oldPin) return alert('PIN Lama wajib diisi untuk verifikasi!');
+
+        try {
+            const res = await fetch('/api/saveUser', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify([{ username, oldPin, newPin }])
+            });
+            const json = await res.json();
+            
+            if (json.status === 'success') {
+                alert('Profil berhasil diperbarui!');
+                document.getElementById('profile-old-pin').value = '';
+                document.getElementById('profile-new-pin').value = '';
+                if (newPin) {
+                    alert('Karena PIN berubah, silakan login kembali.');
+                    window.location.reload();
+                }
+            } else {
+                alert('Gagal: ' + json.message);
+            }
+        } catch (err) {
+            alert('Error server: ' + err.message);
+        }
+    }
+
+    function openAddUserModal() {
+        const body = `
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username Baru</label>
+                <input type="text" id="add-user-name" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+            </div>
+            <div class="mt-4">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">PIN Awal (6 Angka)</label>
+                <input type="password" id="add-user-pin" class="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold tracking-widest text-center" maxlength="6" required>
+            </div>
+            <div class="mt-4">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Peran (Role)</label>
+                <select id="add-user-role" class="w-full p-3 bg-white border border-slate-200 rounded-xl">
+                    <option value="user">User Biasa</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+        `;
+        document.getElementById('edit-modal-title').innerText = 'Tambah Pengguna';
+        document.getElementById('edit-modal-body').innerHTML = body;
+        
+        document.getElementById('edit-modal-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('add-user-name').value;
+            const newPin = document.getElementById('add-user-pin').value;
+            const role = document.getElementById('add-user-role').value;
+
+            try {
+                const res = await fetch('/api/saveUser', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify([{ username, oldPin: 'admin_bypass', newPin, role }])
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    closeEditModal();
+                    loadUsers();
+                } else {
+                    alert(json.message);
+                }
+            } catch (err) { alert(err.message); }
+        };
+        
+        document.getElementById('edit-modal').classList.remove('hidden');
+        document.getElementById('edit-modal').classList.add('flex');
+    }
+
+    async function deleteUser(username) {
+        if (!confirm(`Hapus pengguna ${username} secara permanen?`)) return;
+        try {
+            const res = await fetch('/api/deleteUser', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify([username])
+            });
+            const json = await res.json();
+            if (json.status === 'success') loadUsers();
+            else alert(json.message);
+        } catch (err) { alert(err.message); }
+    }
+</script>
