@@ -211,6 +211,11 @@ async function deleteCrypto(id) {
 
 // --- RENDER ---
 function renderPortfolio() {
+    // Pengaman: Pastikan variabel adalah Array agar tidak error
+    if (!Array.isArray(banks)) banks = [];
+    if (!Array.isArray(deposits)) deposits = [];
+    if (!Array.isArray(cryptos)) cryptos = [];
+
     // Bank dropdown for deposito
     const depoBankEl = document.getElementById('depo-bank');
     if (depoBankEl) {
