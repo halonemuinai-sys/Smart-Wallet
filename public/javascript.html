@@ -195,27 +195,32 @@
 
         const optionsHtml = `
             <div class="custom-select-options custom-scrollbar">
-                ${options.map(opt => {
+                ${options.map((opt, index) => {
+                    if (opt.isDivider) {
+                        return `<div class="h-px bg-slate-100 my-2 mx-2"></div>`;
+                    }
+                    
                     const label = typeof opt === 'object' ? opt.name : opt;
                     const val = typeof opt === 'object' ? opt.id : opt;
                     const isMain = typeof opt === 'object' && opt.isMain;
                     const isSub = typeof opt === 'object' && opt.isSub;
-                    const emoji = getEmoji(label);
                     
                     if (isMain) {
-                        return `<div class="custom-select-option main-category bg-slate-50 border-b border-slate-100 hover:bg-slate-100" data-value="${val}">
-                            <span class="text-lg">${emoji}</span>
-                            <span class="font-black text-slate-800 text-[11px] tracking-widest uppercase">${label}</span>
+                        return `<div class="custom-select-option main-category px-4 py-3 hover:bg-slate-50 transition-colors" data-value="${val}">
+                            <span class="text-slate-900 font-black text-xs tracking-tighter flex items-center gap-2">
+                                <span class="text-[8px]">●</span> ${label.toUpperCase()}
+                            </span>
                         </div>`;
                     } else if (isSub) {
-                        return `<div class="custom-select-option sub-category ml-6 border-l-2 border-indigo-100 pl-4 py-2" data-value="${val}">
-                            <span class="text-indigo-300 text-sm font-bold">↳</span>
-                            <span class="text-slate-600 font-medium">${label}</span>
+                        return `<div class="custom-select-option sub-category px-4 py-2.5 hover:bg-indigo-50/50 group transition-colors" data-value="${val}">
+                            <div class="flex items-center gap-2 ml-4">
+                                <span class="text-slate-300 font-light">└─</span>
+                                <span class="text-slate-600 font-medium group-hover:text-indigo-600 transition-colors">${label}</span>
+                            </div>
                         </div>`;
                     } else {
-                        return `<div class="custom-select-option" data-value="${val}">
-                            <span class="text-lg">${emoji}</span>
-                            <span class="font-medium text-slate-700">${label}</span>
+                        return `<div class="custom-select-option px-4 py-3 hover:bg-slate-50 transition-colors" data-value="${val}">
+                            <span class="text-slate-700 font-semibold">${label}</span>
                         </div>`;
                     }
                 }).join('')}
@@ -245,15 +250,14 @@
                 
                 if (opt.classList.contains('sub-category')) {
                     const label = opt.querySelector('span:last-child').innerText;
-                    displayHtml = `<span class="mr-1">↳</span> ${label}`;
+                    displayHtml = `<span class="text-indigo-400 mr-2">└─</span> ${label}`;
                 } else if (opt.classList.contains('main-category')) {
-                    const emoji = opt.querySelector('span:first-child').innerText;
-                    const label = opt.querySelector('span:last-child').innerText;
-                    displayHtml = `<span class="mr-2">${emoji}</span> <strong>${label}</strong>`;
+                    // Ambil teks setelah simbol bullet
+                    const fullText = opt.querySelector('span:first-child').innerText;
+                    const cleanLabel = fullText.replace('●', '').trim();
+                    displayHtml = `<span class="text-slate-400 mr-2">●</span> <strong>${cleanLabel}</strong>`;
                 } else {
-                    const emoji = opt.querySelector('span:first-child').innerText;
-                    const label = opt.querySelector('span:last-child').innerText;
-                    displayHtml = `<span class="mr-2">${emoji}</span> ${label}`;
+                    displayHtml = opt.innerText;
                 }
                 
                 selectEl.value = val;
@@ -289,6 +293,8 @@
                     children.forEach(ch => {
                         options.push({ id: p.name + ' - ' + ch.name, name: ch.name, isSub: true });
                     });
+                    // Garis pemisah antar grup
+                    options.push({ isDivider: true });
                 } else {
                     // Item tunggal
                     options.push({ id: p.name, name: p.name });
