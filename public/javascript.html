@@ -263,6 +263,11 @@
 
     // Fungsi untuk memperbarui semua dropdown kategori
     function renderCategoriesDropdowns() {
+        // Populasikan select native asli terlebih dahulu agar form backend tidak error
+        if (typeof renderNativeCategoriesDropdowns === 'function') {
+            renderNativeCategoriesDropdowns();
+        }
+
         // Build Hierarchical Arrays
         const buildHierarchy = (type) => {
             const parents = categoryList.filter(c => c.type === type && (!c.parent_id || c.parent_id === ''));
@@ -1458,7 +1463,7 @@
         renderCategoryList();
     }
 
-    function renderCategoriesDropdowns() {
+    function renderNativeCategoriesDropdowns() {
         const incEl = document.getElementById('inc-category');
         const expEl = document.getElementById('exp-category');
         const parentCatEl = document.getElementById('cat-parent');
