@@ -1,0 +1,72 @@
+<!-- MODULE: PEMASUKAN -->
+<div id="view-income" class="view-module max-w-6xl mx-auto space-y-6 pb-20 hidden">
+    <header class="mb-8 hidden md:block">
+        <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Pemasukan</h1>
+        <p class="text-slate-500 mt-1">Catat semua sumber pemasukan Anda di sini.</p>
+    </header>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- FORM CARD -->
+        <div class="lg:col-span-1">
+            <div class="relative bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-lg shadow-emerald-200/50 p-6 text-white overflow-hidden">
+                <!-- Decorative Elements -->
+                <div class="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full blur-2xl"></div>
+                <div class="absolute -left-4 -bottom-4 w-20 h-20 bg-white/5 rounded-full blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold tracking-tight">Catat Pemasukan</h3>
+                    </div>
+                    <form onsubmit="submitTransaction(event, 'income')" class="space-y-4">
+                        <div>
+                            <label for="inc-amount" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Nominal</label>
+                            <input type="text" id="inc-amount" title="Nominal Pemasukan" placeholder="0" required oninput="formatCurrencyInput(this)" class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white placeholder-white/40 focus:ring-2 focus:ring-white/40 outline-none transition-all">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="inc-category" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Kategori</label>
+                                <div class="select-wrapper">
+                                    <select id="inc-category" title="Kategori Pemasukan" class="w-full rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 p-3 pr-10 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all appearance-none"></select>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="inc-bank" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Akun Tujuan</label>
+                                <div class="select-wrapper">
+                                    <select id="inc-bank" title="Akun Bank Pemasukan" required class="w-full rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 p-3 pr-10 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all appearance-none"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="inc-date" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Tanggal</label>
+                                <input type="date" id="inc-date" title="Tanggal Pemasukan" required class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all">
+                            </div>
+                            <div>
+                                <label for="inc-desc" class="block text-[11px] font-bold text-emerald-100 uppercase tracking-wider mb-1">Keterangan</label>
+                                <input type="text" id="inc-desc" title="Keterangan Pemasukan" placeholder="Opsional..." class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white placeholder-white/40 focus:ring-2 focus:ring-white/40 outline-none transition-all">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl text-emerald-700 font-bold transition-all bg-white hover:bg-emerald-50 shadow-lg shadow-black/10 mt-1 text-sm uppercase tracking-wider active:scale-[0.98]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                            Simpan Pemasukan
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY CARD -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 h-full flex flex-col">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <h3 class="text-lg font-semibold text-slate-800">Riwayat Pemasukan</h3>
+                    <input type="text" onfocus="(this.type='month')" onblur="if(!this.value) this.type='text'" id="filter-inc-month" title="Filter Bulan Pemasukan" placeholder="Pilih Bulan" onchange="renderData()" class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 cursor-pointer">
+                </div>
+                <div id="list-income" class="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1 max-h-[600px]"></div>
+            </div>
+        </div>
+    </div>
+</div>

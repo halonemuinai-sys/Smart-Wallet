@@ -1,0 +1,5 @@
+node_modules/
+.env
+data_migration.json
+data_total_migration.json
+.DS_Store

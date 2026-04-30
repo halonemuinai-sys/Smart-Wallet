@@ -1,0 +1,117 @@
+<!-- MODULE: LAPORAN & ANALISA -->
+<div id="view-report" class="view-module max-w-6xl mx-auto space-y-6 pb-20 hidden">
+    <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Laporan & Analisa</h1>
+            <p class="text-slate-500 mt-1">Pantau tren dan performa keuangan Anda secara mendalam.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <select id="report-filter-month-sel" onchange="renderCharts()" title="Pilih Bulan" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="01">Januari</option>
+                <option value="02">Februari</option>
+                <option value="03">Maret</option>
+                <option value="04">April</option>
+                <option value="05">Mei</option>
+                <option value="06">Juni</option>
+                <option value="07">Juli</option>
+                <option value="08">Agustus</option>
+                <option value="09">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+            </select>
+            <select id="report-filter-year-sel" onchange="renderCharts()" title="Pilih Tahun" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                <!-- Tahun diisi via JS -->
+            </select>
+        </div>
+    </header>
+
+    <!-- KPI SUMMARY -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 group hover:border-emerald-200 transition-all">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Pemasukan</p>
+            <p id="rpt-total-inc" class="text-xl font-extrabold text-slate-800">Rp 0</p>
+            <div class="mt-2 h-1 w-8 bg-emerald-500 rounded-full"></div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 group hover:border-rose-200 transition-all">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Pengeluaran</p>
+            <p id="rpt-total-exp" class="text-xl font-extrabold text-slate-800">Rp 0</p>
+            <div class="mt-2 h-1 w-8 bg-rose-500 rounded-full"></div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 group hover:border-indigo-200 transition-all">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Tabungan</p>
+            <p id="rpt-total-net" class="text-xl font-extrabold text-slate-800">Rp 0</p>
+            <div class="mt-2 h-1 w-8 bg-indigo-500 rounded-full"></div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 group hover:border-amber-200 transition-all">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Saving Rate</p>
+            <div class="flex items-end gap-2">
+                <p id="rpt-saving-rate" class="text-xl font-extrabold text-slate-800">0%</p>
+                <span id="rpt-saving-status" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 mb-1">N/A</span>
+            </div>
+            <div class="mt-2 h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div id="rpt-saving-bar" class="h-full bg-amber-500 transition-all duration-1000 w-0"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CHARTS -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- TREND CHART -->
+        <div class="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+                <svg class="w-32 h-32 text-indigo-900" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+            </div>
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Tren Keuangan 6 Bulan</h3>
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Pemasukan vs Pengeluaran</p>
+                </div>
+            </div>
+            <div class="relative h-72 w-full">
+                <canvas id="chartTrend"></canvas>
+            </div>
+        </div>
+
+        <!-- CATEGORY PIE -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
+            <div class="mb-8">
+                <h3 class="text-lg font-bold text-slate-800">Struktur Belanja</h3>
+                <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Distribusi per Kategori</p>
+            </div>
+            <div class="relative h-64 w-full flex-1 mb-4">
+                <canvas id="chartExpense"></canvas>
+            </div>
+            <div id="rpt-top-cat-list" class="space-y-2">
+                <!-- Top 3 Categories List -->
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPARISON TABLE / INSIGHTS -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-indigo-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-indigo-200">
+            <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
+            <h3 class="text-xl font-bold mb-2">Insight Finansial</h3>
+            <p id="rpt-insight-text" class="text-indigo-100 text-sm leading-relaxed mb-6">Analisa data Anda untuk melihat performa bulan ini...</p>
+            <div class="flex gap-4">
+                <div class="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
+                    <p class="text-[10px] font-bold text-indigo-200 uppercase mb-1">Rata-rata Belanja</p>
+                    <p id="rpt-avg-daily" class="text-lg font-bold">Rp 0</p>
+                </div>
+                <div class="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
+                    <p class="text-[10px] font-bold text-indigo-200 uppercase mb-1">Budget Terpakai</p>
+                    <p id="rpt-budget-pct" class="text-lg font-bold">0%</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+            <h3 class="text-lg font-bold text-slate-800 mb-4">Efisiensi Kategori</h3>
+            <div id="rpt-efficiency-list" class="space-y-4">
+                <!-- List category budget efficiency -->
+                <p class="text-center py-8 text-slate-400 text-sm italic">Pilih bulan untuk melihat analisa efisiensi.</p>
+            </div>
+        </div>
+    </div>
+</div>

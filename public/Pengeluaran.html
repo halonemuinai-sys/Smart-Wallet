@@ -1,0 +1,117 @@
+<!-- MODULE: PENGELUARAN -->
+<div id="view-expense" class="view-module max-w-6xl mx-auto space-y-6 pb-20 hidden">
+    <header class="mb-8 hidden md:block">
+        <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Pengeluaran</h1>
+        <p class="text-slate-500 mt-1">Catat belanja dan pengeluaran harian Anda.</p>
+    </header>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- ROW 1: Forms -->
+        <div class="space-y-6">
+            <!-- MANUAL FORM CARD -->
+            <div class="relative bg-gradient-to-br from-rose-600 to-pink-700 rounded-2xl shadow-lg shadow-rose-200/50 p-6 text-white overflow-hidden">
+                <!-- Decorative Elements -->
+                <div class="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full blur-2xl"></div>
+                <div class="absolute -left-4 -bottom-4 w-20 h-20 bg-white/5 rounded-full blur-xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg>
+                        </div>
+                        <h3 class="text-lg font-bold tracking-tight">Catat Pengeluaran</h3>
+                    </div>
+                    <form onsubmit="submitTransaction(event, 'expense')" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="exp-amount" class="block text-[11px] font-bold text-rose-100 uppercase tracking-wider mb-1">Nominal (Bayar)</label>
+                                <input type="text" id="exp-amount" title="Nominal Pengeluaran" placeholder="0" required oninput="formatCurrencyInput(this)" class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white placeholder-white/40 focus:ring-2 focus:ring-white/40 outline-none transition-all">
+                            </div>
+                            <div>
+                                <label for="exp-discount" class="block text-[11px] font-bold text-rose-100 uppercase tracking-wider mb-1">Diskon / Hemat</label>
+                                <input type="text" id="exp-discount" title="Diskon Pengeluaran" placeholder="0" oninput="formatCurrencyInput(this)" class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white placeholder-white/40 focus:ring-2 focus:ring-white/40 outline-none transition-all">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="exp-category" class="block text-[11px] font-bold text-rose-100 uppercase tracking-wider mb-1">Kategori</label>
+                                <div class="select-wrapper">
+                                    <select id="exp-category" title="Kategori Pengeluaran" class="w-full rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 p-3 pr-10 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all appearance-none"></select>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="exp-bank" class="block text-[11px] font-bold text-rose-100 uppercase tracking-wider mb-1">Akun</label>
+                                <div class="select-wrapper">
+                                    <select id="exp-bank" title="Akun Bank Pengeluaran" required class="w-full rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 p-3 pr-10 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all appearance-none"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label for="exp-date" class="block text-[11px] font-bold text-rose-100 uppercase tracking-wider mb-1">Tanggal</label>
+                                <input type="date" id="exp-date" title="Tanggal Pengeluaran" required class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white focus:ring-2 focus:ring-white/40 outline-none transition-all">
+                            </div>
+                            <div>
+                                <label for="exp-desc" class="block text-[11px] font-bold text-rose-100 uppercase tracking-wider mb-1">Keterangan</label>
+                                <input type="text" id="exp-desc" title="Keterangan Pengeluaran" placeholder="Opsional..." class="w-full rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 p-3 text-base sm:text-sm text-white placeholder-white/40 focus:ring-2 focus:ring-white/40 outline-none transition-all">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl text-rose-700 font-bold transition-all bg-white hover:bg-rose-50 shadow-lg shadow-black/10 mt-1 text-sm uppercase tracking-wider active:scale-[0.98]">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                            Simpan Pengeluaran
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <!-- CATAT CEPAT CARD -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative overflow-hidden">
+                <div class="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-amber-50 to-orange-50 rounded-bl-[80px] -z-0"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="p-2 bg-amber-100 text-amber-600 rounded-xl">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Catat Cepat</h3>
+                            <p class="text-xs text-slate-400">Pilih template pengeluaran rutin</p>
+                        </div>
+                    </div>
+                    <form onsubmit="submitQuickExpense(event)" class="space-y-4">
+                        <div id="list-quick-expense" class="space-y-2 max-h-[200px] overflow-y-auto custom-scrollbar">
+                            <!-- Di-render oleh JS dari Fixed Costs -->
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="quick-exp-bank" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Akun Pembayar</label>
+                                <div class="select-wrapper">
+                                    <select id="quick-exp-bank" title="Akun Bank Cepat" required class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all bg-white shadow-sm dark-arrow"></select>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="quick-exp-date" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Tanggal</label>
+                                <input type="date" id="quick-exp-date" title="Tanggal Cepat" required class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all shadow-sm">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-bold transition-all bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-md shadow-amber-200/50 text-sm uppercase tracking-wider">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            Catat Semua Terpilih
+                        </button>
+                    </form>
+                    <p class="text-[10px] text-slate-400 mt-3 text-center">Kelola template di menu <strong>Konfigurasi</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORY CARD - Full Width Below -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h3 class="text-lg font-semibold text-slate-800">Riwayat Pengeluaran</h3>
+            <input type="text" onfocus="(this.type='month')" onblur="if(!this.value) this.type='text'" id="filter-exp-month" title="Filter Bulan Pengeluaran" placeholder="Pilih Bulan" onchange="renderData()" class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-rose-500 bg-slate-50 cursor-pointer">
+        </div>
+        <div id="list-expense" class="space-y-3 overflow-y-auto pr-2 custom-scrollbar max-h-[500px]"></div>
+    </div>
+</div>

@@ -1,0 +1,478 @@
+<script>
+// ==========================================
+// E-COMMERCE MODULE
+// ==========================================
+
+let ecommerceLogs = [];
+let ecomPlatforms = [];
+
+// --- DATA LOADING ---
+async function loadEcommerce() {
+    await _loadEcomPlatforms();
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        return new Promise(resolve => {
+            google.script.run
+                .withSuccessHandler(d => { ecommerceLogs = d || []; renderEcommerce(); resolve(); })
+                .withFailureHandler(e => { console.error('Load Ecommerce Error:', e); ecommerceLogs = []; resolve(); })
+                .getEcommerceData();
+        });
+    } else if (GOOGLE_APPS_SCRIPT_URL) {
+        try {
+            const res = await fetch(GOOGLE_APPS_SCRIPT_URL + "?api=ecommerce");
+            ecommerceLogs = await res.json();
+        } catch(e) {
+            ecommerceLogs = JSON.parse(localStorage.getItem('keuangan_ecommerce') || '[]');
+        }
+    } else {
+        ecommerceLogs = JSON.parse(localStorage.getItem('keuangan_ecommerce') || '[]');
+    }
+    renderEcommerce();
+}
+
+async function _loadEcomPlatforms() {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        return new Promise(resolve => {
+            google.script.run
+                .withSuccessHandler(d => { ecomPlatforms = d || []; resolve(); })
+                .withFailureHandler(e => { console.error('Load Platforms Error:', e); ecomPlatforms = []; resolve(); })
+                .getEcomPlatforms();
+        });
+    } else {
+        ecomPlatforms = JSON.parse(localStorage.getItem('keuangan_ecom_platforms') || '[]');
+        if (ecomPlatforms.length === 0) {
+            ecomPlatforms = [
+                {id:'plat_1', platform:'Shopee', store_name:''},
+                {id:'plat_2', platform:'Tokopedia', store_name:''},
+                {id:'plat_3', platform:'TikTok Shop', store_name:''},
+                {id:'plat_4', platform:'Blibli', store_name:''},
+                {id:'plat_5', platform:'Lazada', store_name:''}
+            ];
+        }
+    }
+}
+
+// --- SUBMIT ECOMMERCE ---
+async function submitEcommerce(e) {
+    e.preventDefault();
+    const btnSubmit = document.getElementById('btn-ecom-submit');
+    if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = 'Menyimpan...'; }
+
+    const platform = document.getElementById('ecom-platform').value;
+    const itemName = document.getElementById('ecom-item').value;
+    const category = document.getElementById('ecom-category').value;
+    const amount = cleanNumber(document.getElementById('ecom-amount').value);
+    const bankId = document.getElementById('ecom-bank').value;
+    const tenor = parseInt(document.getElementById('ecom-tenor').value);
+    const date = document.getElementById('ecom-date').value;
+
+    const ecomId = 'ecom_' + Date.now().toString(36);
+    const ecom = {
+        id: ecomId,
+        date: date,
+        platform: platform,
+        item_name: itemName,
+        category: category,
+        amount: amount,
+        bank_id: bankId,
+        tenor: tenor
+    };
+
+    ecommerceLogs.push(ecom);
+
+    // Create Expense Transaction
+    const trxId = 'txn_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 2);
+    const trxOut = {
+        id: trxId,
+        type: 'expense',
+        category: category || 'E-Commerce',
+        amount: amount,
+        date: date,
+        description: `[${platform}] ${itemName}` + (tenor > 1 ? ` (Cicilan ${tenor}x)` : ''),
+        bank: bankId
+    };
+
+    // Link transaction ID to ecommerce record
+    ecom.txn_id = trxId;
+
+    transactions.unshift(trxOut);
+
+    // Add to inventory if checkbox is checked
+    const addToInventory = document.getElementById('ecom-add-to-inventory')?.checked;
+    if (addToInventory && typeof addInventoryFromEcom === 'function') {
+        addInventoryFromEcom(ecom);
+    }
+
+    renderEcommerce();
+    renderData();
+    if (addToInventory && typeof renderInventory === 'function') renderInventory();
+
+    // Reset Form
+    document.getElementById('ecom-item').value = '';
+    document.getElementById('ecom-amount').value = '';
+    document.getElementById('ecom-tenor').value = '1';
+    const invChk = document.getElementById('ecom-add-to-inventory');
+    if (invChk) invChk.checked = false;
+
+    const _resetBtn = () => { if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = 'Simpan Belanjaan'; } };
+
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(() => {
+            google.script.run.withSuccessHandler(() => { showSyncing(false); _resetBtn(); })
+                .withFailureHandler(err => { alert("Gagal catat E-Commerce: " + err.message); showSyncing(false); _resetBtn(); })
+                .addEcommerceData(ecom);
+        }).withFailureHandler(err => { 
+            alert("Gagal catat pengeluaran: " + err.message); showSyncing(false); _resetBtn();
+        }).addTransactionData(trxOut);
+    } else if (GOOGLE_APPS_SCRIPT_URL) {
+        try {
+            await fetch(GOOGLE_APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'add', data: trxOut }) });
+            await fetch(GOOGLE_APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'add_ecommerce', data: ecom }) });
+        } catch(err){}
+        showSyncing(false); _resetBtn();
+    } else {
+        localStorage.setItem('keuangan_ecommerce', JSON.stringify(ecommerceLogs));
+        localStorage.setItem('keuangan_data', JSON.stringify(transactions));
+        showSyncing(false); _resetBtn();
+    }
+}
+
+// --- DELETE ---
+async function deleteEcommerce(id) {
+    if (!confirm("Hapus catatan belanja ini? Transaksi pengeluaran terkait juga akan dihapus.")) return;
+    
+    // Find linked transaction ID before removing
+    const ecomItem = ecommerceLogs.find(e => e.id === id);
+    const linkedTxnId = ecomItem ? ecomItem.txn_id : null;
+
+    // Remove from local arrays
+    ecommerceLogs = ecommerceLogs.filter(e => e.id !== id);
+    if (linkedTxnId) {
+        transactions = transactions.filter(t => t.id !== linkedTxnId);
+        renderData(); // Re-render main dashboard since transaction was removed
+    }
+    renderEcommerce();
+    
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(() => showSyncing(false))
+            .withFailureHandler(e => { alert("Gagal hapus: " + e.message); showSyncing(false); })
+            .deleteEcommerceData(id);
+    } else if (GOOGLE_APPS_SCRIPT_URL) {
+        try { await fetch(GOOGLE_APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'delete_ecommerce', id }) }); } catch(e){}
+        showSyncing(false);
+    } else {
+        localStorage.setItem('keuangan_ecommerce', JSON.stringify(ecommerceLogs));
+        showSyncing(false);
+    }
+}
+
+// --- PLATFORM MANAGEMENT (Configuration) ---
+async function submitEcomPlatform(e) {
+    e.preventDefault();
+    const name = document.getElementById('ecom-plat-name').value.trim();
+    const store = document.getElementById('ecom-plat-store').value.trim();
+    if (!name) return;
+
+    const plat = { id: 'plat_' + Date.now().toString(36), platform: name, store_name: store };
+    ecomPlatforms.push(plat);
+    renderEcomPlatformList();
+    renderEcommerce(); // refresh dropdown
+
+    document.getElementById('ecom-plat-name').value = '';
+    document.getElementById('ecom-plat-store').value = '';
+
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(() => showSyncing(false))
+            .withFailureHandler(err => { alert("Gagal simpan platform: " + err.message); showSyncing(false); })
+            .addEcomPlatform(plat);
+    } else {
+        localStorage.setItem('keuangan_ecom_platforms', JSON.stringify(ecomPlatforms));
+        showSyncing(false);
+    }
+}
+
+async function deleteEcomPlatform(id) {
+    if (!confirm("Hapus platform ini?")) return;
+    ecomPlatforms = ecomPlatforms.filter(p => p.id !== id);
+    renderEcomPlatformList();
+    renderEcommerce();
+
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(() => showSyncing(false))
+            .withFailureHandler(err => { console.error(err); showSyncing(false); })
+            .deleteEcomPlatform(id);
+    } else {
+        localStorage.setItem('keuangan_ecom_platforms', JSON.stringify(ecomPlatforms));
+        showSyncing(false);
+    }
+}
+
+function renderEcomPlatformList() {
+    const el = document.getElementById('list-ecom-platforms');
+    if (!el) return;
+    if (ecomPlatforms.length === 0) {
+        el.innerHTML = '<p class="text-xs text-slate-400 text-center py-3">Belum ada platform.</p>';
+        return;
+    }
+    el.innerHTML = ecomPlatforms.map(p => {
+        const storeLabel = p.store_name ? ` <span class="text-slate-400">(${p.store_name})</span>` : '';
+        return `<div class="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-slate-50 group transition-colors">
+            <span class="text-sm font-medium text-slate-700">${p.platform}${storeLabel}</span>
+            <button onclick="deleteEcomPlatform('${p.id}')" class="p-1 text-slate-300 hover:text-rose-500 rounded transition-colors opacity-0 group-hover:opacity-100" title="Hapus">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+        </div>`;
+    }).join('');
+}
+
+// --- RENDER MAIN VIEW ---
+const _PLAT_COLORS = {
+    'Shopee':     { bg: 'bg-orange-500', light: 'bg-orange-100 text-orange-600', border: 'border-l-orange-400', bar: '#f97316' },
+    'Tokopedia':  { bg: 'bg-emerald-500', light: 'bg-emerald-100 text-emerald-600', border: 'border-l-emerald-400', bar: '#10b981' },
+    'TikTok Shop':{ bg: 'bg-slate-800', light: 'bg-slate-800 text-white', border: 'border-l-slate-700', bar: '#1e293b' },
+    'Blibli':     { bg: 'bg-blue-500', light: 'bg-blue-100 text-blue-600', border: 'border-l-blue-400', bar: '#3b82f6' },
+    'Lazada':     { bg: 'bg-indigo-500', light: 'bg-indigo-100 text-indigo-600', border: 'border-l-indigo-400', bar: '#6366f1' },
+};
+const _FALLBACK_COLORS = [
+    { bg: 'bg-violet-500', light: 'bg-violet-100 text-violet-600', border: 'border-l-violet-400', bar: '#8b5cf6' },
+    { bg: 'bg-pink-500', light: 'bg-pink-100 text-pink-600', border: 'border-l-pink-400', bar: '#ec4899' },
+    { bg: 'bg-cyan-500', light: 'bg-cyan-100 text-cyan-600', border: 'border-l-cyan-400', bar: '#06b6d4' },
+    { bg: 'bg-amber-500', light: 'bg-amber-100 text-amber-600', border: 'border-l-amber-400', bar: '#f59e0b' },
+    { bg: 'bg-teal-500', light: 'bg-teal-100 text-teal-600', border: 'border-l-teal-400', bar: '#14b8a6' },
+];
+function _getPlatStyle(name) {
+    if (_PLAT_COLORS[name]) return _PLAT_COLORS[name];
+    let hash = 0; for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return _FALLBACK_COLORS[Math.abs(hash) % _FALLBACK_COLORS.length];
+}
+
+function renderEcommerce() {
+    // Populate platform dropdown
+    const platEl = document.getElementById('ecom-platform');
+    if (platEl) {
+        const currentVal = platEl.value;
+        let platOpts = '<option value="">Pilih Platform...</option>';
+        ecomPlatforms.forEach(p => {
+            const label = p.store_name ? `${p.platform} — ${p.store_name}` : p.platform;
+            platOpts += `<option value="${p.platform}">${label}</option>`;
+        });
+        platEl.innerHTML = platOpts;
+        if (currentVal) { const opt = platEl.querySelector(`option[value="${currentVal}"]`); if (opt) platEl.value = currentVal; }
+    }
+
+    // Category dropdown is now populated by renderCategoriesDropdowns() in javascript.html
+    // Populate bank dropdown
+    const bankEl = document.getElementById('ecom-bank');
+    if (bankEl && banks) {
+        let bankOpts = '<option value="">Pilih Metode Pembayaran...</option>';
+        banks.forEach(b => {
+            let typeIcon = '🏦';
+            if (b.account_type === 'ewallet') typeIcon = '📱';
+            if (b.account_type === 'emoney')  typeIcon = '💳';
+            if (b.account_type === 'credit_card') typeIcon = '💳';
+            if (b.account_type === 'cash')    typeIcon = '💵';
+            bankOpts += `<option value="${b.id}">${typeIcon} ${b.name}</option>`;
+        });
+        bankEl.innerHTML = bankOpts;
+    }
+
+    // Init date if empty
+    const dateEl = document.getElementById('ecom-date');
+    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+
+    // Sort logs descending
+    ecommerceLogs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Stats
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    let totalSpentAll = 0;
+    let totalInstallmentMonth = 0;
+    let totalSpentMonth = 0;
+    let platformCounts = {};
+    let platformSpend = {};
+
+    ecommerceLogs.forEach(e => {
+        const amt = Number(e.amount);
+        totalSpentAll += amt;
+        const purchaseDate = new Date(e.date);
+        
+        if (purchaseDate.getFullYear() === currentYear && purchaseDate.getMonth() === currentMonth) {
+            totalSpentMonth += amt;
+        }
+        
+        if (e.platform) {
+            platformCounts[e.platform] = (platformCounts[e.platform] || 0) + 1;
+            platformSpend[e.platform] = (platformSpend[e.platform] || 0) + amt;
+        }
+
+        if (e.tenor > 1) {
+            const monthsPassed = (currentYear - purchaseDate.getFullYear()) * 12 + (currentMonth - purchaseDate.getMonth());
+            if (monthsPassed >= 0 && monthsPassed < e.tenor) {
+                totalInstallmentMonth += (amt / Number(e.tenor));
+            }
+        }
+    });
+
+    // KPI Updates
+    const totSpentMonthEl = document.getElementById('ecom-total-spent-month');
+    const totSpentEl = document.getElementById('ecom-total-spent');
+    const totInstEl = document.getElementById('ecom-total-installment');
+    const totItemsEl = document.getElementById('ecom-total-items');
+    const topPlatEl = document.getElementById('ecom-top-platform');
+    const topPlatSubEl = document.getElementById('ecom-top-platform-sub');
+    
+    if (totSpentMonthEl) totSpentMonthEl.innerText = formatRp(totalSpentMonth);
+    if (totSpentEl) totSpentEl.innerText = formatRp(totalSpentAll);
+    if (totInstEl) totInstEl.innerText = formatRp(totalInstallmentMonth);
+    if (totItemsEl) totItemsEl.innerText = ecommerceLogs.length;
+    
+    if (topPlatEl && topPlatSubEl) {
+        let topPlatform = "-";
+        let topCount = 0;
+        for (let plat in platformCounts) {
+            if (platformCounts[plat] > topCount) { topCount = platformCounts[plat]; topPlatform = plat; }
+        }
+        topPlatEl.innerText = topPlatform;
+        topPlatSubEl.innerText = topCount > 0 ? `${topCount} Transaksi` : "Belum ada";
+    }
+
+    const countBadge = document.getElementById('ecom-count-badge');
+    if (countBadge) countBadge.innerText = ecommerceLogs.length + ' Item';
+
+    // Platform list in config
+    renderEcomPlatformList();
+
+    // ===== Platform Breakdown =====
+    const breakdownEl = document.getElementById('ecom-platform-breakdown');
+    if (breakdownEl) {
+        const platforms = Object.keys(platformSpend).sort((a, b) => platformSpend[b] - platformSpend[a]);
+        const maxSpend = platforms.length > 0 ? platformSpend[platforms[0]] : 1;
+
+        if (platforms.length === 0) {
+            breakdownEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-3">Belum ada data.</p>';
+        } else {
+            breakdownEl.innerHTML = platforms.map((plat, idx) => {
+                const style = _getPlatStyle(plat);
+                const spend = platformSpend[plat];
+                const count = platformCounts[plat];
+                const pct = Math.round((spend / totalSpentAll) * 100);
+                const barW = Math.max(8, Math.round((spend / maxSpend) * 100));
+                return `<div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-lg ${style.light} flex items-center justify-center text-[10px] font-bold">${plat.charAt(0)}</div>
+                            <span class="text-xs font-semibold text-slate-700">${plat}</span>
+                            <span class="text-[10px] text-slate-400">${count}x</span>
+                        </div>
+                        <span class="text-xs font-bold text-slate-800">${formatRp(spend)}</span>
+                    </div>
+                    <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="ecom-breakdown-bar h-full rounded-full" style="width:${barW}%;background:${style.bar};animation-delay:${idx * 100}ms"></div>
+                    </div>
+                    <p class="text-[9px] text-slate-400 text-right">${pct}% dari total</p>
+                </div>`;
+            }).join('');
+        }
+    }
+
+    // ===== Render Items List =====
+    const listEl = document.getElementById('list-ecommerce');
+    if (listEl) {
+        if (ecommerceLogs.length === 0) {
+            listEl.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-center">
+                <div class="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
+                    <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                </div>
+                <p class="text-slate-400 text-sm font-medium">Belum ada riwayat belanja E-Commerce.</p>
+                <p class="text-slate-300 text-xs mt-1">Catat pembelian pertama Anda di sebelah kiri.</p>
+            </div>`;
+        } else {
+            listEl.innerHTML = ecommerceLogs.map((e, idx) => {
+                const bankName = banks.find(b => b.id === e.bank_id)?.name || 'N/A';
+                const isInstallment = e.tenor > 1;
+                const style = _getPlatStyle(e.platform || '');
+                
+                let installmentInfo = '';
+                if (isInstallment) {
+                    const purchaseDate = new Date(e.date);
+                    const monthsPassed = (currentYear - purchaseDate.getFullYear()) * 12 + (currentMonth - purchaseDate.getMonth());
+                    const monthly = Math.round(Number(e.amount) / Number(e.tenor));
+                    const progress = Math.min(100, Math.round(((monthsPassed + 1) / e.tenor) * 100));
+                    
+                    if (monthsPassed >= 0 && monthsPassed < e.tenor) {
+                        installmentInfo = `<div class="mt-3 p-2.5 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-100">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[9px] font-bold text-rose-500 uppercase tracking-widest flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    Cicilan Aktif
+                                </span>
+                                <span class="text-[10px] font-bold text-rose-600">${formatRp(monthly)}/bln</span>
+                            </div>
+                            <div class="h-1.5 bg-rose-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-rose-400 to-pink-500 rounded-full transition-all" style="width:${progress}%"></div>
+                            </div>
+                            <p class="text-[9px] text-rose-400 mt-1 text-right">Bulan ${monthsPassed + 1} dari ${e.tenor}</p>
+                        </div>`;
+                    } else if (monthsPassed >= e.tenor) {
+                        installmentInfo = `<div class="mt-3 p-2.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 flex items-center justify-between">
+                            <span class="text-[9px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Lunas
+                            </span>
+                            <span class="text-xs font-bold text-emerald-600">✓ Selesai</span>
+                        </div>`;
+                    }
+                }
+
+                const displayDate = e.date || '-';
+                const tenorBadge = isInstallment 
+                    ? `<span class="px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600 text-[9px] font-bold">${e.tenor}x cicilan</span>` 
+                    : `<span class="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-600 text-[9px] font-bold">Cash</span>`;
+
+                return `
+                <div class="ecom-item-card p-4 rounded-2xl border border-slate-100 bg-white relative group border-l-4 ${style.border}" style="animation-delay:${Math.min(idx * 40, 400)}ms">
+                    <button onclick="deleteEcommerce('${e.id}')" title="Hapus" class="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                    
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl ${style.light} flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                            ${(e.platform || '?').charAt(0)}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <h4 class="font-bold text-slate-800 text-sm truncate">${e.item_name || '-'}</h4>
+                                    <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                        <span class="text-[10px] text-slate-400 font-medium">${e.platform || '-'}</span>
+                                        <span class="w-1 h-1 rounded-full bg-slate-200"></span>
+                                        <span class="text-[10px] text-slate-400">${displayDate}</span>
+                                        <span class="w-1 h-1 rounded-full bg-slate-200"></span>
+                                        ${tenorBadge}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-2.5 flex items-center justify-between">
+                                <span class="font-extrabold text-indigo-600 text-base tracking-tight">${formatRp(e.amount)}</span>
+                                <span class="text-[10px] font-semibold text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                                    ${bankName}
+                                </span>
+                            </div>
+                            
+                            ${installmentInfo}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    }
+}
+</script>
+

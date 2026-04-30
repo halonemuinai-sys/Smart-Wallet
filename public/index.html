@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Wallet - Personal Finance</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <?!= include('styles'); ?>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans antialiased overflow-hidden">
+
+    <div class="flex h-screen w-full">
+
+        <!-- ========================================== -->
+        <!-- SIDEBAR MODULE -->
+        <!-- ========================================== -->
+        <!-- Backdrop for mobile -->
+        <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden md:hidden"></div>
+        
+        <aside id="main-sidebar" class="fixed md:relative w-64 h-full bg-white border-r border-slate-200 flex flex-col z-40 shadow-xl md:shadow-sm transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shrink-0">
+            <div class="p-6 flex items-center justify-between border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-emerald-600 rounded-xl shadow-emerald-200/50 shadow-lg border-b-2 border-white/20">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-extrabold text-slate-900 tracking-tight">Smart <span class="text-emerald-600">Wallet</span></span>
+                </div>
+                <button onclick="toggleSidebar()" class="md:hidden p-2 text-slate-400 hover:text-slate-600" title="Tutup Menu" aria-label="Tutup Menu">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <nav id="sidebar-nav" class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+                <!-- Di-render oleh JS -->
+            </nav>
+        </aside>
+
+        <!-- ========================================== -->
+        <!-- MAIN CONTENT AREA -->
+        <!-- ========================================== -->
+        <main id="main-content" class="flex-1 h-screen overflow-y-auto p-4 md:p-8 relative hidden">
+
+            <!-- Mobile Header -->
+            <div class="md:hidden flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex items-center gap-2 font-bold text-slate-900">
+                    <div class="p-1.5 bg-emerald-600 rounded-lg shadow-sm border-b border-white/20">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                    </div>
+                    Smart <span class="text-emerald-600">Wallet</span>
+                </div>
+                <button onclick="toggleSidebar()" class="p-2 text-slate-600 bg-slate-100 rounded-lg shadow-inner" title="Buka Menu" aria-label="Buka Menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 mb-4">
+                <button onclick="syncFromGoogleSheets(event)" class="p-2 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-600 hover:bg-indigo-100 transition-all shadow-sm flex items-center gap-2 font-semibold text-sm px-3" title="Sync dari Google Sheets">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Sync
+                </button>
+                <button id="btn-toggle-visibility" onclick="toggleBalanceVisibility()" class="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-all shadow-sm" title="Sembunyikan/Tampilkan Saldo">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                </button>
+                <div id="sync-status" class="text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200 hidden shadow-sm">
+                    Menyinkronkan...
+                </div>
+            </div>
+
+            <?!= include('Dashboard'); ?>
+            <?!= include('Budget'); ?>
+            <?!= include('Pemasukan'); ?>
+            <?!= include('Pengeluaran'); ?>
+            <?!= include('Report'); ?>
+            <?!= include('Bank'); ?>
+            <?!= include('Portofolio'); ?>
+            <?!= include('Ecommerce'); ?>
+            <?!= include('Subscription'); ?>
+            <?!= include('Inventory'); ?>
+            <?!= include('Configuration'); ?>
+
+            <!-- UNIVERSAL EDIT MODAL -->
+            <div id="edit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if(event.target===this)closeEditModal()">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 relative animate-[bankCardIn_0.3s_ease-out]">
+                    <button onclick="closeEditModal()" title="Tutup" aria-label="Tutup" class="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                    <h3 id="edit-modal-title" class="text-lg font-bold text-slate-800 mb-5 pr-8">Edit Data</h3>
+                    <form id="edit-modal-form" class="space-y-4" onsubmit="submitEditModal(event)">
+                        <div id="edit-modal-body">
+                            <!-- Dynamic fields rendered by JS -->
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="closeEditModal()" class="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-all text-sm">Batal</button>
+                            <button type="submit" class="flex-1 py-3 px-4 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-200/50 text-sm">Simpan Perubahan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+        
+        <?!= include('Login'); ?>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- API BRIDGE (GOOGLE COMPATIBILITY) -->
+    <!-- ========================================== -->
+    <script>
+        // --- UNIVERSAL API BRIDGE (FIXED) ---
+        window.google = {
+            script: {
+                run: (function() {
+                    let _successHandler = null;
+                    let _failureHandler = null;
+
+                    function createRunner() {
+                        return new Proxy({}, {
+                            get: (target, prop) => {
+                                // Handle chaining
+                                if (prop === 'withSuccessHandler') {
+                                    return function(h) { _successHandler = h; return createRunner(); };
+                                }
+                                if (prop === 'withFailureHandler') {
+                                    return function(h) { _failureHandler = h; return createRunner(); };
+                                }
+
+                                // Handle actual function calls
+                                return async function(...args) {
+                                    try {
+                                        const response = await fetch(`/api/${prop}`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(args)
+                                        });
+                                        const result = await response.json();
+                                        if (_successHandler) _successHandler(result);
+                                        return result;
+                                    } catch (err) {
+                                        console.error(`API Error (${prop}):`, err);
+                                        if (_failureHandler) _failureHandler(err);
+                                    }
+                                };
+                            }
+                        });
+                    }
+
+                    return createRunner();
+                })()
+            }
+        };
+    </script>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT LOGIC -->
+    <!-- ========================================== -->
+    <?!= include('javascript'); ?>
+    <?!= include('js_budget'); ?>
+    <?!= include('js_subscriptions'); ?>
+    <?!= include('js_portfolio'); ?>
+    <?!= include('js_ecommerce'); ?>
+    <?!= include('js_inventory'); ?>
+
+    <script>
+        function syncFromGoogleSheets(event) {
+            let url = localStorage.getItem('gas_api_url');
+            if (!url) {
+                url = prompt("Masukkan URL Web App Google Apps Script Anda (diawali dengan https://script.google.com/macros/...):");
+                if (!url) return;
+                localStorage.setItem('gas_api_url', url);
+            } else {
+                if (!confirm("Mulai sinkronisasi data dari Google Sheets sekarang? (Proses ini memakan waktu beberapa detik)")) return;
+            }
+            
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Wait..`;
+            btn.disabled = true;
+
+            google.script.run
+                .withSuccessHandler(res => {
+                    alert(res.message || "Sinkronisasi berhasil! Halaman akan dimuat ulang.");
+                    location.reload();
+                })
+                .withFailureHandler(err => {
+                    alert("Gagal Sinkronisasi: Pastikan URL Web App benar dan bisa diakses. Pesan: " + err);
+                    localStorage.removeItem('gas_api_url'); // Reset jika gagal
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                })
+                .syncFromGAS(url);
+        }
+    </script>
+</body>
+</html>

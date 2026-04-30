@@ -1,0 +1,338 @@
+<script>
+// ==========================================
+// INVENTORY MODULE
+// ==========================================
+let inventoryItems = [];
+let currentInvPage = 1;
+
+function invChangePage(page) {
+    currentInvPage = page;
+}
+
+// --- LOAD INVENTORY ---
+async function loadInventory() {
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        return new Promise((resolve) => {
+            google.script.run.withSuccessHandler(d => {
+                inventoryItems = d || [];
+                renderInventory();
+                showSyncing(false);
+                resolve();
+            }).withFailureHandler(e => {
+                console.error(e);
+                showSyncing(false);
+                resolve();
+            }).getInventoryData();
+        });
+    }
+    if (GOOGLE_APPS_SCRIPT_URL) {
+        try {
+            const res = await fetch(GOOGLE_APPS_SCRIPT_URL + "?api=inventory");
+            inventoryItems = await res.json();
+        } catch(e) { inventoryItems = JSON.parse(localStorage.getItem('keuangan_inventory') || '[]'); }
+    } else {
+        inventoryItems = JSON.parse(localStorage.getItem('keuangan_inventory') || '[]');
+    }
+    renderInventory();
+    showSyncing(false);
+}
+
+// --- SUBMIT MANUAL INVENTORY ---
+async function submitInventoryManual(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-inv-submit');
+    if (btn) { btn.disabled = true; btn.innerHTML = 'Menyimpan...'; }
+
+    const item = {
+        id: 'inv_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 2),
+        item_name: document.getElementById('inv-name').value,
+        category: document.getElementById('inv-category').value,
+        purchase_price: cleanNumber(document.getElementById('inv-price').value),
+        purchase_date: document.getElementById('inv-date').value,
+        lifespan_months: parseInt(document.getElementById('inv-lifespan').value) || 24,
+        condition: document.getElementById('inv-condition').value,
+        source: 'manual',
+        ecom_id: ''
+    };
+
+    inventoryItems.push(item);
+    renderInventory();
+
+    // Reset form
+    document.getElementById('inv-name').value = '';
+    document.getElementById('inv-price').value = '';
+    document.getElementById('inv-lifespan').value = '';
+
+    const _resetBtn = () => { if (btn) { btn.disabled = false; btn.innerHTML = 'Simpan ke Inventory'; } };
+
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(() => { showSyncing(false); _resetBtn(); })
+            .withFailureHandler(err => { alert('Gagal simpan: ' + err.message); showSyncing(false); _resetBtn(); })
+            .addInventoryData(item);
+    } else if (GOOGLE_APPS_SCRIPT_URL) {
+        try { await fetch(GOOGLE_APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'add_inventory', data: item }) }); } catch(e){}
+        showSyncing(false); _resetBtn();
+    } else {
+        localStorage.setItem('keuangan_inventory', JSON.stringify(inventoryItems));
+        showSyncing(false); _resetBtn();
+    }
+}
+
+// --- ADD FROM E-COMMERCE (called from js_ecommerce) ---
+async function addInventoryFromEcom(ecom) {
+    const item = {
+        id: 'inv_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 2),
+        item_name: ecom.item_name,
+        category: ecom.category || 'Lainnya',
+        purchase_price: Number(ecom.amount),
+        purchase_date: ecom.date,
+        lifespan_months: 24, // default 2 tahun
+        condition: 'Baik',
+        source: 'ecommerce',
+        ecom_id: ecom.id
+    };
+
+    inventoryItems.push(item);
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(() => {})
+            .withFailureHandler(err => console.error('Inventory save failed:', err.message))
+            .addInventoryData(item);
+    } else if (GOOGLE_APPS_SCRIPT_URL) {
+        try { await fetch(GOOGLE_APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'add_inventory', data: item }) }); } catch(e){}
+    } else {
+        localStorage.setItem('keuangan_inventory', JSON.stringify(inventoryItems));
+    }
+}
+
+// --- DELETE INVENTORY ---
+async function deleteInventoryItem(id) {
+    if (!confirm('Hapus barang ini dari inventory?')) return;
+
+    inventoryItems = inventoryItems.filter(i => i.id !== id);
+    renderInventory();
+
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(() => showSyncing(false))
+            .withFailureHandler(e => { console.error(e); showSyncing(false); })
+            .deleteInventoryData(id);
+    } else if (GOOGLE_APPS_SCRIPT_URL) {
+        try { await fetch(GOOGLE_APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'delete_inventory', id: id }) }); } catch(e){}
+        showSyncing(false);
+    } else {
+        localStorage.setItem('keuangan_inventory', JSON.stringify(inventoryItems));
+        showSyncing(false);
+    }
+}
+
+// --- EDIT INVENTORY ---
+function editInventoryItem(id) {
+    const item = inventoryItems.find(i => i.id === id);
+    if (!item) return;
+
+    const condOptions = [{value:'Baik',text:'Baik'},{value:'Bekas',text:'Bekas'},{value:'Rusak',text:'Rusak'}];
+    const catOptions = CATS_INVENTORY.map(c => ({value:c,text:c}));
+
+    const html =
+        _editField('Nama Barang', 'edit-inv-name', item.item_name) +
+        '<div class="grid grid-cols-2 gap-3">' +
+            _editSelect('Kategori', 'edit-inv-cat', catOptions, item.category) +
+            _editField('Harga Beli', 'edit-inv-price', formatRp(item.purchase_price), 'text', 'oninput="formatCurrencyInput(this)"') +
+        '</div>' +
+        '<div class="grid grid-cols-2 gap-3">' +
+            _editField('Tanggal Beli', 'edit-inv-date', item.purchase_date, 'date') +
+            _editField('Masa Pakai (Bulan)', 'edit-inv-life', item.lifespan_months, 'number', 'min="1"') +
+        '</div>' +
+        _editSelect('Kondisi', 'edit-inv-cond', condOptions, item.condition);
+
+    openEditModal('Edit Aset', html, async function() {
+        item.item_name = document.getElementById('edit-inv-name').value;
+        item.category = document.getElementById('edit-inv-cat').value;
+        item.purchase_price = cleanNumber(document.getElementById('edit-inv-price').value);
+        item.purchase_date = document.getElementById('edit-inv-date').value;
+        item.lifespan_months = parseInt(document.getElementById('edit-inv-life').value) || 24;
+        item.condition = document.getElementById('edit-inv-cond').value;
+        renderInventory();
+        await _syncUpdate('update_inventory', item, 'updateInventoryData');
+    });
+}
+
+// --- DEPRECIATION CALC ---
+function _calcDepreciation(item) {
+    const now = new Date();
+    const purchased = new Date(item.purchase_date);
+    const monthsUsed = Math.max(0, (now.getFullYear() - purchased.getFullYear()) * 12 + now.getMonth() - purchased.getMonth());
+    const lifespan = Number(item.lifespan_months) || 24;
+    const pctUsed = Math.min(100, Math.round((monthsUsed / lifespan) * 100));
+    const currentValue = Math.max(0, Math.round(Number(item.purchase_price) * (1 - monthsUsed / lifespan)));
+    const isExpired = monthsUsed >= lifespan;
+    return { monthsUsed, lifespan, pctUsed, currentValue, isExpired };
+}
+
+// --- RENDER INVENTORY ---
+function renderInventory() {
+    const searchVal = (document.getElementById('inv-search')?.value || '').toLowerCase();
+    const filterCond = document.getElementById('inv-filter-condition')?.value || 'all';
+    const filterCat = document.getElementById('inv-filter-cat')?.value || 'all';
+
+    let filtered = inventoryItems.filter(i => {
+        const matchSearch = !searchVal || (i.item_name || '').toLowerCase().includes(searchVal) || (i.category || '').toLowerCase().includes(searchVal);
+        const matchCond = filterCond === 'all' || i.condition === filterCond;
+        const matchCat = filterCat === 'all' || i.category === filterCat;
+        return matchSearch && matchCond && matchCat;
+    });
+
+    // KPI calculations
+    let totalInvestment = 0, totalCurrentValue = 0, expiredCount = 0;
+    inventoryItems.forEach(item => {
+        const dep = _calcDepreciation(item);
+        totalInvestment += Number(item.purchase_price);
+        totalCurrentValue += dep.currentValue;
+        if (dep.isExpired) expiredCount++;
+    });
+
+    const kTotalVal = document.getElementById('inv-total-value');
+    const kCurVal = document.getElementById('inv-current-value');
+    const kTotalItems = document.getElementById('inv-total-items');
+    const kExpired = document.getElementById('inv-expired-count');
+
+    if (kTotalVal) kTotalVal.innerText = formatRp(totalInvestment);
+    if (kCurVal) kCurVal.innerText = formatRp(totalCurrentValue);
+    if (kTotalItems) kTotalItems.innerText = inventoryItems.length;
+    if (kExpired) kExpired.innerText = expiredCount;
+
+    // Render list
+    const listEl = document.getElementById('inv-list');
+    if (!listEl) return;
+
+    // --- Sorting Logic ---
+    const sortVal = document.getElementById('inv-sort')?.value || 'newest';
+    filtered.sort((a, b) => {
+        const dateA = new Date(a.purchase_date).getTime();
+        const dateB = new Date(b.purchase_date).getTime();
+        if (sortVal === 'newest') return dateB - dateA;
+        if (sortVal === 'oldest') return dateA - dateB;
+        if (sortVal === 'highest_price') return Number(b.purchase_price) - Number(a.purchase_price);
+        if (sortVal === 'lowest_price') return Number(a.purchase_price) - Number(b.purchase_price);
+        if (sortVal === 'shortest_life') {
+            const depA = _calcDepreciation(a);
+            const depB = _calcDepreciation(b);
+            const leftA = Math.max(0, depA.lifespan - depA.monthsUsed);
+            const leftB = Math.max(0, depB.lifespan - depB.monthsUsed);
+            return leftA - leftB;
+        }
+        return 0;
+    });
+
+    // --- Pagination Logic ---
+    const itemsPerPage = 5;
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    if (currentInvPage > totalPages && totalPages > 0) currentInvPage = totalPages;
+    if (currentInvPage < 1) currentInvPage = 1;
+    
+    const startIndex = (currentInvPage - 1) * itemsPerPage;
+    const paginatedItems = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `
+            <div class="bg-slate-50 border border-slate-100 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
+                <svg class="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                <p class="text-slate-500 font-medium">${inventoryItems.length === 0 ? 'Belum ada barang di inventory.' : 'Tidak ditemukan barang.'}</p>
+            </div>`;
+        document.getElementById('inv-pagination').innerHTML = '';
+        return;
+    }
+
+    const condColors = { 'Baik': 'bg-emerald-100 text-emerald-700', 'Bekas': 'bg-amber-100 text-amber-700', 'Rusak': 'bg-rose-100 text-rose-700' };
+    const barColors = ['from-teal-400 to-emerald-500', 'from-amber-400 to-orange-500', 'from-rose-400 to-red-500'];
+
+    listEl.innerHTML = paginatedItems.map((item, idx) => {
+        const dep = _calcDepreciation(item);
+        const barColor = dep.pctUsed <= 50 ? barColors[0] : dep.pctUsed <= 80 ? barColors[1] : barColors[2];
+        const sourceLabel = item.source === 'ecommerce' 
+            ? `<span class="text-[8px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 font-bold">E-Com</span>` 
+            : `<span class="text-[8px] bg-slate-50 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 font-bold">Manual</span>`;
+
+        return `
+        <div class="inv-item bg-white rounded-xl p-3 shadow-sm border border-slate-100 group relative overflow-hidden" style="animation-delay:${idx*40}ms">
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${barColor} rounded-l-xl"></div>
+            <div class="pl-2">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <h4 class="font-bold text-sm text-slate-800 leading-tight">${item.item_name}</h4>
+                            <span class="text-[8px] px-1.5 py-0.5 rounded font-bold ${condColors[item.condition] || 'bg-slate-100 text-slate-500'}">${item.condition}</span>
+                            ${sourceLabel}
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-0.5">${item.category} • Beli: ${item.purchase_date}</p>
+                    </div>
+                    <div class="flex items-center gap-0.5 shrink-0">
+                        <button onclick="editInventoryItem('${item.id}')" class="p-1 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded transition-colors opacity-0 group-hover:opacity-100" title="Edit">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </button>
+                        <button onclick="deleteInventoryItem('${item.id}')" class="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition-colors opacity-0 group-hover:opacity-100" title="Hapus">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-2 grid grid-cols-3 gap-2">
+                    <div>
+                        <p class="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Harga Beli</p>
+                        <p class="text-xs font-extrabold text-slate-800">${formatRp(item.purchase_price)}</p>
+                    </div>
+                    <div>
+                        <p class="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Nilai Saat Ini</p>
+                        <p class="text-xs font-extrabold ${dep.isExpired ? 'text-rose-600' : 'text-teal-600'}">${formatRp(dep.currentValue)}</p>
+                    </div>
+                    <div>
+                        <p class="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Sisa Pakai</p>
+                        <p class="text-xs font-extrabold text-slate-600">${dep.isExpired ? '<span class="text-rose-500">Expired</span>' : (dep.lifespan - dep.monthsUsed) + ' bln'}</p>
+                    </div>
+                </div>
+
+                <div class="mt-2">
+                    <div class="flex items-center justify-between mb-0.5">
+                        <span class="text-[8px] text-slate-400">Umur: ${dep.monthsUsed}/${dep.lifespan} bln</span>
+                        <span class="text-[8px] font-bold text-slate-400">${dep.pctUsed}%</span>
+                    </div>
+                    <div class="h-1 bg-slate-100 rounded-full overflow-hidden">
+                        <div class="inv-deprec-bar h-full bg-gradient-to-r ${barColor} rounded-full" style="width:${dep.pctUsed}%;animation-delay:${idx*50}ms"></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    // Render Pagination Controls
+    const pagEl = document.getElementById('inv-pagination');
+    if (!pagEl) return;
+    
+    if (totalPages <= 1) {
+        pagEl.innerHTML = '';
+        return;
+    }
+
+    let pHtml = `<button onclick="invChangePage(${currentInvPage - 1}); renderInventory()" class="px-2 py-1 rounded-md border border-slate-200 text-xs font-medium text-slate-500 hover:bg-slate-50 ${currentInvPage === 1 ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}">Prev</button>`;
+    
+    // Simple pagination: just show pages 1, 2, 3...
+    for (let i = 1; i <= totalPages; i++) {
+        if (totalPages > 5 && i > 2 && i < totalPages - 1 && i !== currentInvPage) {
+            if (i === 3 && currentInvPage > 4) pHtml += `<span class="px-1 text-slate-400 text-xs">...</span>`;
+            if (i === totalPages - 2 && currentInvPage < totalPages - 3) pHtml += `<span class="px-1 text-slate-400 text-xs">...</span>`;
+            if (i !== currentInvPage - 1 && i !== currentInvPage + 1) continue;
+        }
+        pHtml += `<button onclick="invChangePage(${i}); renderInventory()" class="w-7 h-7 rounded-md border ${i === currentInvPage ? 'bg-teal-50 border-teal-200 text-teal-700 font-bold' : 'border-slate-200 text-slate-600 hover:bg-slate-50'} flex items-center justify-center text-xs transition-colors">${i}</button>`;
+    }
+
+    pHtml += `<button onclick="invChangePage(${currentInvPage + 1}); renderInventory()" class="px-2 py-1 rounded-md border border-slate-200 text-xs font-medium text-slate-500 hover:bg-slate-50 ${currentInvPage === totalPages ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}">Next</button>`;
+    
+    pagEl.innerHTML = pHtml;
+}
+</script>

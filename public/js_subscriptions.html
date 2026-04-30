@@ -1,0 +1,288 @@
+<script>
+// --- SUBSCRIPTION MANAGER LOGIC ---
+let subscriptions = [];
+
+async function loadSubscriptions() {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        return new Promise((resolve) => {
+            google.script.run.withSuccessHandler(d => {
+                subscriptions = d || [];
+                resolve();
+            }).withFailureHandler(e => {
+                console.error(e);
+                resolve();
+            }).getSubscriptionsData(); // Assuming backend method
+        }).catch(() => {
+            const stored = localStorage.getItem('keuangan_subscriptions');
+            subscriptions = stored ? JSON.parse(stored) : [];
+        });
+    } else {
+        const stored = localStorage.getItem('keuangan_subscriptions');
+        subscriptions = stored ? JSON.parse(stored) : [];
+    }
+}
+
+async function saveSubscriptionsLocal() {
+    localStorage.setItem('keuangan_subscriptions', JSON.stringify(subscriptions));
+    
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        try {
+            google.script.run.withSuccessHandler(() => showSyncing(false)).syncSubscriptionsData(subscriptions); 
+        } catch(e) {
+            showSyncing(false);
+        }
+    } else {
+        showSyncing(false);
+    }
+}
+
+function renderSubscriptions(filter = 'all') {
+    const listEl = document.getElementById('list-subscriptions');
+    if (!listEl) return;
+
+    // Populate dropdowns if needed
+    const catSelect = document.getElementById('sub-category');
+    const bankSelect = document.getElementById('sub-bank');
+    
+    if (catSelect && catSelect.options.length === 0 && CATS_EXPENSE) {
+        catSelect.innerHTML = CATS_EXPENSE.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+    
+    if (bankSelect && bankSelect.options.length === 0 && banks) {
+        bankSelect.innerHTML = banks.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    }
+
+    let filtered = [...subscriptions];
+    if (filter === 'due') {
+        const today = new Date();
+        filtered = subscriptions.filter(s => {
+            const due = new Date(s.due_date);
+            const diff = (due - today) / (1000 * 60 * 60 * 24);
+            return diff >= 0 && diff <= 7; // Next 7 days
+        });
+    }
+
+    // Calculate Summary
+    const totalMonthly = subscriptions
+        .filter(s => s.status !== 'inactive')
+        .reduce((sum, s) => {
+            const amt = Number(s.amount);
+            return sum + (s.billing_cycle === 'yearly' ? amt / 12 : amt);
+        }, 0);
+    
+    const activeCount = subscriptions.filter(s => s.status !== 'inactive').length;
+    
+    const totalEl = document.getElementById('sub-total-monthly');
+    const countEl = document.getElementById('sub-count-active');
+    if (totalEl) totalEl.innerText = formatRp(totalMonthly);
+    if (countEl) countEl.innerText = activeCount;
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <p class="text-slate-400 text-sm">Tidak ada langganan ditemukan.</p>
+        </div>`;
+        return;
+    }
+
+    listEl.innerHTML = filtered.map(s => {
+        const nextDue = new Date(s.due_date);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        const diffDays = Math.ceil((nextDue - today) / (1000 * 60 * 60 * 24));
+        let statusBadge = '';
+        
+        if (diffDays < 0) statusBadge = `<span class="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">TERLEWAT</span>`;
+        else if (diffDays === 0) statusBadge = `<span class="text-[9px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold">HARI INI</span>`;
+        else if (diffDays <= 3) statusBadge = `<span class="text-[9px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full font-bold">${diffDays} HARI LAGI</span>`;
+        else statusBadge = `<span class="text-[9px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-bold">${diffDays} HARI LAGI</span>`;
+
+        const bankName = banks.find(b => b.id === s.bank_id)?.name || 'N/A';
+
+        return `
+            <div class="group p-4 rounded-2xl border border-slate-100 hover:border-indigo-100 hover:shadow-md transition-all bg-white">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-slate-50 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 rounded-xl transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-bold text-slate-800">${s.name}</h4>
+                                ${statusBadge}
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">${s.category} • ${s.email ? s.email + ' • ' : ''}via ${bankName}</p>
+                        </div>
+                    </div>
+                    <div class="text-right flex items-center gap-4">
+                        <div>
+                            <p class="text-sm font-black text-slate-800">${formatRp(s.amount)}</p>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${s.billing_cycle === 'monthly' ? 'Bulanan' : 'Tahunan'}</p>
+                        </div>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="recordSubscriptionPayment('${s.id}')" title="Catat Pengeluaran" class="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            </button>
+                            <button onclick="editSubscription('${s.id}')" title="Edit" class="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            </button>
+                            <button onclick="deleteSubscription('${s.id}')" title="Hapus" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function submitSubscription(e) {
+    e.preventDefault();
+    const id = document.getElementById('sub-id').value;
+    const name = document.getElementById('sub-name').value;
+    const email = document.getElementById('sub-email').value;
+    const amount = cleanNumber(document.getElementById('sub-amount').value);
+    const cycle = document.getElementById('sub-cycle').value;
+    const dueDate = document.getElementById('sub-due-date').value;
+    const category = document.getElementById('sub-category').value;
+    const bank = document.getElementById('sub-bank').value;
+
+    const data = {
+        id: id || 'sub_' + Date.now().toString(36),
+        name, email, amount, billing_cycle: cycle, due_date: dueDate, category, bank_id: bank, status: 'active'
+    };
+
+    if (id) {
+        const idx = subscriptions.findIndex(s => s.id === id);
+        subscriptions[idx] = data;
+    } else {
+        subscriptions.push(data);
+    }
+
+    saveSubscriptionsLocal();
+    resetSubscriptionForm();
+    renderSubscriptions();
+}
+
+function editSubscription(id) {
+    const s = subscriptions.find(s => s.id === id);
+    if (!s) return;
+
+    document.getElementById('sub-id').value = s.id;
+    document.getElementById('sub-name').value = s.name;
+    document.getElementById('sub-email').value = s.email || '';
+    document.getElementById('sub-amount').value = formatRp(s.amount);
+    document.getElementById('sub-cycle').value = s.billing_cycle;
+    document.getElementById('sub-due-date').value = s.due_date;
+    document.getElementById('sub-category').value = s.category;
+    document.getElementById('sub-bank').value = s.bank_id;
+
+    document.getElementById('sub-submit-btn').innerText = 'Update Langganan';
+    document.getElementById('sub-cancel-btn').classList.remove('hidden');
+}
+
+function resetSubscriptionForm() {
+    document.getElementById('sub-id').value = '';
+    document.getElementById('sub-name').value = '';
+    document.getElementById('sub-email').value = '';
+    document.getElementById('sub-amount').value = '';
+    document.getElementById('sub-cycle').value = 'monthly';
+    document.getElementById('sub-due-date').value = '';
+    
+    document.getElementById('sub-submit-btn').innerText = 'Simpan';
+    document.getElementById('sub-cancel-btn').classList.add('hidden');
+}
+
+function deleteSubscription(id) {
+    if (!confirm('Hapus langganan ini?')) return;
+    subscriptions = subscriptions.filter(s => s.id !== id);
+    saveSubscriptionsLocal();
+    renderSubscriptions();
+}
+
+function recordSubscriptionPayment(id) {
+    const s = subscriptions.find(s => s.id === id);
+    if (!s) return;
+
+    const trx = {
+        id: 'txn_' + Date.now().toString(36),
+        type: 'expense',
+        category: s.category,
+        amount: s.amount,
+        date: new Date().toISOString().split('T')[0],
+        description: `Bayar Langganan: ${s.name}`,
+        bank: s.bank_id
+    };
+
+    transactions.unshift(trx);
+    // Sort transactions
+    transactions.sort((a, b) => {
+        const d = new Date(b.date) - new Date(a.date);
+        return d !== 0 ? d : b.id.localeCompare(a.id);
+    });
+
+    if (typeof saveTransactionLocal === 'function') {
+        saveTransactionLocal(); // Assuming this exists or we use the standard sync
+    } else {
+        // Fallback sync logic from javascript.html
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run.addTransactionData(trx);
+        } else {
+            localStorage.setItem('keuangan_data', JSON.stringify(transactions));
+        }
+    }
+    
+    // Update due date to next month/year
+    const oldDue = new Date(s.due_date);
+    if (s.billing_cycle === 'monthly') {
+        oldDue.setMonth(oldDue.getMonth() + 1);
+    } else {
+        oldDue.setFullYear(oldDue.getFullYear() + 1);
+    }
+    s.due_date = oldDue.toISOString().split('T')[0];
+    
+    saveSubscriptionsLocal();
+    renderData();
+    renderSubscriptions();
+    
+    alert(`Berhasil mencatat pembayaran ${s.name}! Tanggal tagihan berikutnya: ${s.due_date}`);
+}
+
+function renderSubscriptionDashboard() {
+    const dashEl = document.getElementById('dash-subscription-widget');
+    if (!dashEl) return;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const upcoming = subscriptions
+        .filter(s => s.status !== 'inactive')
+        .map(s => {
+            const due = new Date(s.due_date);
+            const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+            return { ...s, diff };
+        })
+        .filter(s => s.diff >= 0 && s.diff <= 10)
+        .sort((a, b) => a.diff - b.diff);
+
+    if (upcoming.length === 0) {
+        dashEl.innerHTML = `<p class="text-[10px] text-slate-400 text-center py-2">Tidak ada tagihan mendesak.</p>`;
+        return;
+    }
+
+    dashEl.innerHTML = upcoming.slice(0, 3).map(s => {
+        const color = s.diff <= 2 ? 'text-rose-500' : 'text-amber-500';
+        return `
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full ${s.diff <= 2 ? 'bg-rose-500' : 'bg-amber-500'}"></div>
+                    <span class="text-[11px] font-bold text-slate-700 truncate max-w-[80px]">${s.name}</span>
+                </div>
+                <span class="text-[10px] font-black ${color}">${s.diff === 0 ? 'Hari Ini' : s.diff + ' Hari'}</span>
+            </div>
+        `;
+    }).join('');
+}
+</script>

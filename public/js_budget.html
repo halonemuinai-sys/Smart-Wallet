@@ -1,0 +1,274 @@
+<script>
+// --- BUDGETING LOGIC ---
+let budgets = [];
+
+async function loadBudget() {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        return new Promise((resolve) => {
+            google.script.run.withSuccessHandler(d => {
+                budgets = d || [];
+                resolve();
+            }).withFailureHandler(e => {
+                console.error(e);
+                resolve();
+            }).getBudgetsData(); // Assuming this backend method exists, if not we fallback to local storage
+        }).catch(() => {
+            const stored = localStorage.getItem('keuangan_budgets');
+            budgets = stored ? JSON.parse(stored) : [];
+        });
+    } else {
+        const stored = localStorage.getItem('keuangan_budgets');
+        budgets = stored ? JSON.parse(stored) : [];
+    }
+}
+
+async function saveBudgetLocal() {
+    localStorage.setItem('keuangan_budgets', JSON.stringify(budgets));
+    
+    showSyncing(true);
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        try {
+            google.script.run.withSuccessHandler(() => showSyncing(false)).syncBudgetsData(budgets); 
+        } catch(e) {
+            showSyncing(false);
+        }
+    } else if (GOOGLE_APPS_SCRIPT_URL) {
+        try {
+            await fetch(GOOGLE_APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'sync_budgets', data: budgets }) });
+        } catch(e) {}
+        showSyncing(false);
+    } else {
+        showSyncing(false);
+    }
+}
+
+function renderBudget() {
+    // 1. Populate category dropdown in budget form
+    const catSelect = document.getElementById('budget-category');
+    if (catSelect && CATS_EXPENSE) {
+        const currentVal = catSelect.value;
+        const options = CATS_EXPENSE.map(c => `<option value="${c}">${c}</option>`).join('');
+        catSelect.innerHTML = `<option value="">-- Pilih Kategori Pengeluaran --</option>${options}`;
+        if (currentVal && CATS_EXPENSE.includes(currentVal)) {
+            catSelect.value = currentVal;
+        }
+    }
+
+    // 2. Populate month filter (last 6 months + current)
+    const filterEl = document.getElementById('budget-month-filter');
+    if (filterEl && filterEl.options.length === 0) {
+        let html = '';
+        for (let m = 0; m <= 6; m++) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - m);
+            const val = d.toISOString().slice(0, 7);
+            const label = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            html += `<option value="${val}">${m === 0 ? 'Bulan Ini' : label}</option>`;
+        }
+        filterEl.innerHTML = html;
+    }
+
+    const currentMonth = filterEl ? filterEl.value : new Date().toISOString().slice(0, 7);
+    
+    // 3. Hitung pengeluaran per kategori di bulan terpilih
+    const expThisMonth = transactions.filter(t => t.type === 'expense' && t.date && t.date.startsWith(currentMonth));
+    const spentPerCat = {};
+    expThisMonth.forEach(t => {
+        if (!spentPerCat[t.category]) spentPerCat[t.category] = 0;
+        spentPerCat[t.category] += Number(t.amount);
+    });
+
+    const listEl = document.getElementById('list-budgets');
+    if (!listEl) return;
+
+    if (!budgets || budgets.length === 0) {
+        listEl.innerHTML = `
+            <div class="col-span-full bg-slate-50 border border-slate-100 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
+                <svg class="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <p class="text-slate-500 font-medium">Belum ada budget yang diatur.</p>
+                <p class="text-xs text-slate-400 mt-1">Gunakan form di sebelah kiri untuk menambah budget kategori.</p>
+            </div>
+        `;
+        const budgetAllocatedEl = document.getElementById('budget-total-allocated');
+        const budgetSpentEl = document.getElementById('budget-total-spent');
+        const budgetPctEl = document.getElementById('budget-total-pct');
+        const budgetBarEl = document.getElementById('budget-total-bar');
+        if (budgetAllocatedEl) budgetAllocatedEl.innerText = '0';
+        if (budgetSpentEl) budgetSpentEl.innerText = '0';
+        if (budgetPctEl) budgetPctEl.innerText = '0%';
+        if (budgetBarEl) budgetBarEl.style.width = '0%';
+        return;
+    }
+
+    let totalAllocated = 0;
+    let totalSpentInBudgets = 0;
+    let html = '';
+
+    budgets.forEach(b => {
+        const spent = spentPerCat[b.category] || 0;
+        const limit = Number(b.limit);
+        totalAllocated += limit;
+        totalSpentInBudgets += spent;
+
+        const pctRaw = limit > 0 ? (spent / limit) * 100 : 0;
+        const pct = Math.min(100, Math.round(pctRaw));
+        
+        let colorClass = 'bg-emerald-500';
+        let bgClass = 'bg-emerald-50 border-emerald-100';
+        let textClass = 'text-emerald-700';
+        
+        if (pct >= 90) {
+            colorClass = 'bg-rose-500';
+            bgClass = 'bg-rose-50 border-rose-100';
+            textClass = 'text-rose-700';
+        } else if (pct >= 75) {
+            colorClass = 'bg-amber-500';
+            bgClass = 'bg-amber-50 border-amber-100';
+            textClass = 'text-amber-700';
+        }
+
+        const remaining = limit - spent;
+        const isOver = remaining < 0;
+
+        html += `
+            <div class="relative p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-xl ${bgClass}">
+                            <svg class="w-5 h-5 ${textClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 tracking-tight leading-tight">${b.category}</h4>
+                            <p class="text-[10px] text-slate-400 font-medium">Limit: ${formatRp(limit)}</p>
+                        </div>
+                    </div>
+                    <button onclick="deleteBudget('${b.id}')" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100" title="Hapus Budget">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1.5 items-end">
+                        <span class="font-semibold ${isOver ? 'text-rose-600' : 'text-slate-600'}">${formatRp(spent)} terpakai</span>
+                        <span class="font-bold ${isOver ? 'text-rose-600' : textClass}">${pctRaw.toFixed(0)}%</span>
+                    </div>
+                    <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                        <div class="h-full ${colorClass} rounded-full transition-all duration-700" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="text-[10px] text-right font-medium ${isOver ? 'text-rose-500' : 'text-slate-400'}">
+                        ${isOver ? `Over budget ${formatRp(Math.abs(remaining))}` : `Sisa ${formatRp(remaining)}`}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    listEl.innerHTML = html;
+
+    // Update Hero Summary
+    const allocEl = document.getElementById('budget-total-allocated');
+    const spentEl = document.getElementById('budget-total-spent');
+    const pctEl = document.getElementById('budget-total-pct');
+    const barEl = document.getElementById('budget-total-bar');
+
+    if (allocEl) allocEl.innerText = formatRp(totalAllocated);
+    if (spentEl) spentEl.innerText = formatRp(totalSpentInBudgets);
+    
+    const totalPctRaw = totalAllocated > 0 ? (totalSpentInBudgets / totalAllocated) * 100 : 0;
+    const totalPct = Math.min(100, Math.round(totalPctRaw));
+    if (pctEl) pctEl.innerText = totalPctRaw.toFixed(1) + '%';
+    
+    if (barEl) {
+        barEl.style.width = totalPct + '%';
+        if (totalPct >= 90) barEl.className = 'h-full bg-rose-500 rounded-full transition-all duration-1000';
+        else if (totalPct >= 75) barEl.className = 'h-full bg-amber-500 rounded-full transition-all duration-1000';
+        else barEl.className = 'h-full bg-indigo-500 rounded-full transition-all duration-1000';
+    }
+}
+
+function submitBudget(e) {
+    e.preventDefault();
+    const category = document.getElementById('budget-category').value;
+    const amount = cleanNumber(document.getElementById('budget-amount').value);
+
+    if (!category || amount <= 0) {
+        alert("Pilih kategori dan masukkan nominal valid!");
+        return;
+    }
+
+    const existingIdx = budgets.findIndex(b => b.category === category);
+    if (existingIdx >= 0) {
+        if (!confirm(`Budget untuk kategori ${category} sudah ada. Ingin mengupdate limitnya?`)) return;
+        budgets[existingIdx].limit = amount;
+    } else {
+        budgets.push({
+            id: 'bdg_' + Date.now().toString(36),
+            category: category,
+            limit: amount
+        });
+    }
+
+    saveBudgetLocal();
+    renderBudget();
+    renderBudgetDashboard();
+
+    document.getElementById('budget-category').value = '';
+    document.getElementById('budget-amount').value = '';
+}
+
+function deleteBudget(id) {
+    if (!confirm('Hapus budget ini?')) return;
+    budgets = budgets.filter(b => b.id !== id);
+    saveBudgetLocal();
+    renderBudget();
+    renderBudgetDashboard();
+}
+
+function renderBudgetDashboard() {
+    const dashBudgetEl = document.getElementById('dash-budget-breakdown');
+    if (!dashBudgetEl) return;
+    
+    if (!budgets || budgets.length === 0) {
+        dashBudgetEl.innerHTML = `
+            <p class="text-xs text-slate-400 text-center py-4 border border-dashed border-slate-200 rounded-xl">
+                Belum ada budget yang diset.<br>
+                <button onclick="switchView('budget')" class="text-indigo-600 font-semibold mt-1">Set Budget Sekarang</button>
+            </p>
+        `;
+        return;
+    }
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const expThisMonth = transactions.filter(t => t.type === 'expense' && t.date && t.date.startsWith(currentMonth));
+    const spentPerCat = {};
+    expThisMonth.forEach(t => {
+        if (!spentPerCat[t.category]) spentPerCat[t.category] = 0;
+        spentPerCat[t.category] += Number(t.amount);
+    });
+
+    let html = '';
+    budgets.forEach(b => {
+        const spent = spentPerCat[b.category] || 0;
+        const limit = Number(b.limit);
+        const pctRaw = limit > 0 ? (spent / limit) * 100 : 0;
+        const pct = Math.min(100, Math.round(pctRaw));
+        
+        let colorClass = 'bg-emerald-500';
+        if (pct >= 90) colorClass = 'bg-rose-500';
+        else if (pct >= 75) colorClass = 'bg-amber-500';
+
+        html += `
+            <div class="mb-3 last:mb-0 group cursor-pointer" onclick="switchView('budget')">
+                <div class="flex justify-between text-[10px] mb-1">
+                    <span class="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">${b.category}</span>
+                    <span class="font-semibold text-slate-500">${formatRp(spent)} / <span class="text-slate-400">${formatRp(limit)}</span></span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div class="h-full ${colorClass} rounded-full" style="width: ${pct}%"></div>
+                </div>
+            </div>
+        `;
+    });
+    dashBudgetEl.innerHTML = html;
+}
+</script>

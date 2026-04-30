@@ -1,0 +1,170 @@
+<!-- MODULE: PORTOFOLIO -->
+<div id="view-portfolio" class="view-module max-w-6xl mx-auto space-y-6 pb-20 hidden">
+    <header class="mb-8 hidden md:block">
+        <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Portofolio & Aset</h1>
+        <p class="text-slate-500 mt-1">Kelola deposito dan aset kripto Anda.</p>
+    </header>
+
+    <!-- OVERVIEW CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-6 shadow-lg shadow-violet-200/50 text-white relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="relative z-10">
+                <p class="text-xs font-bold text-violet-200 uppercase tracking-widest">Total Deposito</p>
+                <h2 class="text-2xl font-extrabold mt-1" id="port-total-depo">0</h2>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 shadow-lg shadow-amber-200/50 text-white relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full blur-2xl"></div>
+            <div class="relative z-10">
+                <p class="text-xs font-bold text-amber-100 uppercase tracking-widest">Total Kripto</p>
+                <h2 class="text-2xl font-extrabold mt-1" id="port-total-crypto">0</h2>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 shadow-lg text-white relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-28 h-28 bg-white/5 rounded-full blur-2xl"></div>
+            <div class="relative z-10">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Aset</p>
+                <h2 class="text-2xl font-extrabold mt-1" id="port-total-all">0</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- DEPOSITO SECTION -->
+    <!-- ======================== -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- FORM -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sticky top-6">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="p-2.5 bg-violet-100 text-violet-600 rounded-xl">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Tambah Deposito</h3>
+                        <p class="text-xs text-slate-400">Catat deposito baru</p>
+                    </div>
+                </div>
+                <form onsubmit="submitDeposit(event)" class="space-y-4">
+                    <div>
+                        <label for="depo-name" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Nama Deposito</label>
+                        <input type="text" id="depo-name" title="Nama Deposito" placeholder="Misal: Deposito BCA 6 Bln" required class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition-all shadow-sm">
+                    </div>
+                    <div>
+                        <label for="depo-bank" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Dari Akun Bank</label>
+                        <div class="select-wrapper select-dark-arrow">
+                            <select id="depo-bank" title="Bank Deposito" required class="w-full rounded-xl border-slate-200 border p-3 pr-10 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition-all bg-white shadow-sm">
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="depo-amount" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Nominal</label>
+                        <input type="text" id="depo-amount" title="Nominal Deposito" placeholder="10.000.000" required oninput="formatCurrencyInput(this)" class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition-all shadow-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="depo-rate" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Bunga (%/thn)</label>
+                            <input type="number" step="0.01" id="depo-rate" title="Suku Bunga" placeholder="4.5" required class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition-all shadow-sm">
+                        </div>
+                        <div>
+                            <label for="depo-tenor" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Tenor (Bulan)</label>
+                            <input type="number" id="depo-tenor" title="Tenor Deposito" placeholder="6" required class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition-all shadow-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="depo-start" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Tanggal Mulai</label>
+                        <input type="date" id="depo-start" title="Tanggal Mulai Deposito" required class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-violet-500 outline-none transition-all shadow-sm">
+                    </div>
+                    <button type="submit" class="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl text-white font-bold transition-all bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-300/40 mt-1 text-sm uppercase tracking-wider">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        Buka Deposito
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- LIST -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 h-full flex flex-col">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold text-slate-800">Daftar Deposito Aktif</h3>
+                    <span class="text-xs font-bold text-violet-600 bg-violet-50 px-3 py-1.5 rounded-full border border-violet-100" id="depo-count-badge">0 Deposito</span>
+                </div>
+                <div id="list-deposits" class="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1 max-h-[500px]">
+                    <p class="text-slate-400 text-center py-8 text-sm">Belum ada deposito.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- KRIPTO SECTION -->
+    <!-- ======================== -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- FORM -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sticky top-6">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="p-2.5 bg-amber-100 text-amber-600 rounded-xl">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Tambah Aset Kripto</h3>
+                        <p class="text-xs text-slate-400">Catat kepemilikan aset digital</p>
+                    </div>
+                </div>
+                <form onsubmit="submitCrypto(event)" class="space-y-4">
+                    <div>
+                        <label for="crypto-name" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Nama Koin / Token</label>
+                        <input type="text" id="crypto-name" title="Nama Kripto" placeholder="Misal: Bitcoin, Ethereum" required class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="crypto-qty" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Jumlah Unit</label>
+                            <input type="number" step="0.00000001" id="crypto-qty" title="Jumlah Kripto" placeholder="0.5" required class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm">
+                        </div>
+                        <div>
+                            <label for="crypto-value" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Nilai Total (IDR)</label>
+                            <input type="text" id="crypto-value" title="Nilai Kripto" placeholder="50.000.000" required oninput="formatCurrencyInput(this)" class="w-full rounded-xl border-slate-200 border p-3 text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all shadow-sm">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl text-white font-bold transition-all bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-300/40 mt-1 text-sm uppercase tracking-wider">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        Simpan Kripto
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- LIST -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 h-full flex flex-col">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold text-slate-800">Portofolio Kripto</h3>
+                    <span class="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100" id="crypto-count-badge">0 Aset</span>
+                </div>
+                <div id="list-cryptos" class="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1 max-h-[500px]">
+                    <p class="text-slate-400 text-center py-8 text-sm">Belum ada aset kripto.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REMINDER SECTION -->
+    <div id="depo-reminders-section" class="hidden">
+        <div class="bg-gradient-to-r from-rose-50 to-amber-50 rounded-2xl border border-rose-200 p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="p-2 bg-rose-100 text-rose-600 rounded-xl animate-pulse">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-rose-800">Reminder Deposito</h3>
+                    <p class="text-xs text-rose-600">Deposito berikut akan segera jatuh tempo</p>
+                </div>
+            </div>
+            <div id="list-depo-reminders" class="space-y-2">
+            </div>
+        </div>
+    </div>
+</div>
